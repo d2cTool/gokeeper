@@ -107,7 +107,7 @@ func (s *Server) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.Empty, er
 	if err := s.Auth.Logout(ctx, p.SessionID); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &pb.Empty{}, nil
+	return pb.Empty_builder{}.Build(), nil
 }
 
 // List возвращает записи сейфа.
@@ -120,11 +120,11 @@ func (s *Server) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespons
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	out := &pb.ListResponse{}
+	out := make([]*pb.Item, 0, len(items))
 	for _, it := range items {
-		out.Items = append(out.Items, itemToPB(it))
+		out = append(out, itemToPB(it))
 	}
-	return out, nil
+	return pb.ListResponse_builder{Items: out}.Build(), nil
 }
 
 // Get возвращает запись, для binary — с телом файла.
@@ -179,7 +179,7 @@ func (s *Server) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.Empty, 
 	if err := s.Vault.Delete(ctx, p.UserID, req.GetId(), "grpc"); err != nil {
 		return nil, mapVaultErr(err)
 	}
-	return &pb.Empty{}, nil
+	return pb.Empty_builder{}.Build(), nil
 }
 
 // Sync выполняет LWW-синхронизацию.
@@ -196,11 +196,11 @@ func (s *Server) Sync(ctx context.Context, req *pb.SyncRequest) (*pb.SyncRespons
 	if err != nil {
 		return nil, mapVaultErr(err)
 	}
-	out := &pb.SyncResponse{ServerVersion: res.ServerVersion}
+	out := make([]*pb.Item, 0, len(res.Items))
 	for _, it := range res.Items {
-		out.Items = append(out.Items, itemToPB(it))
+		out = append(out, itemToPB(it))
 	}
-	return out, nil
+	return pb.SyncResponse_builder{Items: out, ServerVersion: res.ServerVersion}.Build(), nil
 }
 
 func mustPrincipal(ctx context.Context) (auth.Principal, error) {
@@ -212,7 +212,9 @@ func mustPrincipal(ctx context.Context) (auth.Principal, error) {
 }
 
 func tokensToPB(t auth.Tokens) *pb.TokenResponse {
-	return &pb.TokenResponse{AccessToken: t.AccessToken, RefreshToken: t.RefreshToken, ExpiresIn: t.ExpiresIn}
+	return pb.TokenResponse_builder{
+		AccessToken: t.AccessToken, RefreshToken: t.RefreshToken, ExpiresIn: t.ExpiresIn,
+	}.Build()
 }
 
 func mapAuthErr(err error) error {

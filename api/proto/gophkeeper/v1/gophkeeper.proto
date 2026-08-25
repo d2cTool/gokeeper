@@ -3,6 +3,7 @@ syntax = "proto3";
 package gophkeeper.v1;
 
 option go_package = "gokeeper/internal/transport/grpc/pb;pb";
+// Go-код генерируется в Opaque API (default_api_level=API_OPAQUE в buf.gen.yaml).
 
 // AuthService регистрирует пользователей и выдаёт JWT.
 service AuthService {

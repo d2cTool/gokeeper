@@ -6,7 +6,7 @@ import (
 )
 
 func itemToPB(it vault.Item) *pb.Item {
-	out := &pb.Item{
+	b := pb.Item_builder{
 		Id:        it.ID,
 		Type:      string(it.Type),
 		Metadata:  it.Metadata,
@@ -15,43 +15,48 @@ func itemToPB(it vault.Item) *pb.Item {
 		Deleted:   it.Deleted,
 	}
 	if it.Login != nil {
-		out.Login = &pb.LoginPayload{Url: it.Login.URL, Username: it.Login.Username, Password: it.Login.Password}
+		b.Login = pb.LoginPayload_builder{
+			Url: it.Login.URL, Username: it.Login.Username, Password: it.Login.Password,
+		}.Build()
 	}
 	if it.Text != nil {
-		out.Text = &pb.TextPayload{Title: it.Text.Title, Body: it.Text.Body}
+		b.Text = pb.TextPayload_builder{Title: it.Text.Title, Body: it.Text.Body}.Build()
 	}
 	if it.Binary != nil {
-		out.Binary = &pb.BinaryPayload{Filename: it.Binary.Filename, Data: it.Binary.Data}
+		b.Binary = pb.BinaryPayload_builder{Filename: it.Binary.Filename, Data: it.Binary.Data}.Build()
 	}
 	if it.Card != nil {
-		out.Card = &pb.CardPayload{
+		b.Card = pb.CardPayload_builder{
 			Holder: it.Card.Holder, Number: it.Card.Number,
 			ExpMonth: it.Card.ExpMonth, ExpYear: it.Card.ExpYear, Cvv: it.Card.CVV,
-		}
+		}.Build()
 	}
-	return out
+	return b.Build()
 }
 
 func itemFromPB(in *pb.Item) vault.Item {
 	if in == nil {
 		return vault.Item{}
 	}
-	return upsertToItem(in.Id, in.Type, in.Metadata, in.Login, in.Text, in.Binary, in.Card, in.Version, in.UpdatedAt, in.Deleted)
+	return upsertToItem(in.GetId(), in.GetType(), in.GetMetadata(), in.GetLogin(), in.GetText(), in.GetBinary(), in.GetCard(), in.GetVersion(), in.GetUpdatedAt(), in.GetDeleted())
 }
 
 func upsertToItem(id, typ, meta string, login *pb.LoginPayload, text *pb.TextPayload, binary *pb.BinaryPayload, card *pb.CardPayload, ver, updated int64, deleted bool) vault.Item {
 	it := vault.Item{ID: id, Type: vault.Type(typ), Metadata: meta, Version: ver, UpdatedAt: updated, Deleted: deleted}
 	if login != nil {
-		it.Login = &vault.LoginPayload{URL: login.Url, Username: login.Username, Password: login.Password}
+		it.Login = &vault.LoginPayload{URL: login.GetUrl(), Username: login.GetUsername(), Password: login.GetPassword()}
 	}
 	if text != nil {
-		it.Text = &vault.TextPayload{Title: text.Title, Body: text.Body}
+		it.Text = &vault.TextPayload{Title: text.GetTitle(), Body: text.GetBody()}
 	}
 	if binary != nil {
-		it.Binary = &vault.BinaryPayload{Filename: binary.Filename, Data: binary.Data}
+		it.Binary = &vault.BinaryPayload{Filename: binary.GetFilename(), Data: binary.GetData()}
 	}
 	if card != nil {
-		it.Card = &vault.CardPayload{Holder: card.Holder, Number: card.Number, ExpMonth: card.ExpMonth, ExpYear: card.ExpYear, CVV: card.Cvv}
+		it.Card = &vault.CardPayload{
+			Holder: card.GetHolder(), Number: card.GetNumber(),
+			ExpMonth: card.GetExpMonth(), ExpYear: card.GetExpYear(), CVV: card.GetCvv(),
+		}
 	}
 	return it
 }

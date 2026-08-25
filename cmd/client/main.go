@@ -79,7 +79,7 @@ func registerCmd(addr *string, insc *bool) *cobra.Command {
 				return err
 			}
 			return withAuthClient(*addr, *insc, false, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
-				resp, err := c.Register(ctx, &pb.AuthRequest{Login: login, Password: pass})
+				resp, err := c.Register(ctx, pb.AuthRequest_builder{Login: login, Password: pass}.Build())
 				if err != nil {
 					return err
 				}
@@ -100,7 +100,7 @@ func loginCmd(addr *string, insc *bool) *cobra.Command {
 				return err
 			}
 			return withAuthClient(*addr, *insc, false, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
-				resp, err := c.Login(ctx, &pb.AuthRequest{Login: login, Password: pass})
+				resp, err := c.Login(ctx, pb.AuthRequest_builder{Login: login, Password: pass}.Build())
 				if err != nil {
 					return err
 				}
@@ -116,7 +116,7 @@ func logoutCmd(addr *string, insc *bool) *cobra.Command {
 		Short: "Завершить сессию",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return withAuthClient(*addr, *insc, true, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
-				_, err := c.Logout(ctx, &pb.LogoutRequest{})
+				_, err := c.Logout(ctx, pb.LogoutRequest_builder{}.Build())
 				cfg.Token = ""
 				_ = cfg.Save()
 				return err
@@ -132,7 +132,7 @@ func listCmd(addr *string, insc *bool) *cobra.Command {
 		Short: "Список записей",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-				resp, err := c.List(ctx, &pb.ListRequest{Type: typ})
+				resp, err := c.List(ctx, pb.ListRequest_builder{Type: typ}.Build())
 				if err != nil {
 					return err
 				}
@@ -151,7 +151,7 @@ func getCmd(addr *string, insc *bool) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-				it, err := c.Get(ctx, &pb.GetRequest{Id: args[0]})
+				it, err := c.Get(ctx, pb.GetRequest_builder{Id: args[0]}.Build())
 				if err != nil {
 					return err
 				}
@@ -169,10 +169,10 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 		user := flagOrPrompt("username", "Логин")
 		pass := flagOrPrompt("password", "Пароль")
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-			it, err := c.Create(ctx, &pb.UpsertRequest{
+			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "login", Metadata: meta,
-				Login: &pb.LoginPayload{Url: url, Username: user, Password: pass},
-			})
+				Login: pb.LoginPayload_builder{Url: url, Username: user, Password: pass}.Build(),
+			}.Build())
 			if err != nil {
 				return err
 			}
@@ -188,10 +188,10 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 		title := flagOrPrompt("title", "Заголовок")
 		body := flagOrPrompt("body", "Текст")
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-			it, err := c.Create(ctx, &pb.UpsertRequest{
+			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "text", Metadata: meta,
-				Text: &pb.TextPayload{Title: title, Body: body},
-			})
+				Text: pb.TextPayload_builder{Title: title, Body: body}.Build(),
+			}.Build())
 			if err != nil {
 				return err
 			}
@@ -204,16 +204,16 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 
 	card := &cobra.Command{Use: "card", Short: "Банковская карта", RunE: func(_ *cobra.Command, _ []string) error {
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-			it, err := c.Create(ctx, &pb.UpsertRequest{
+			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "card", Metadata: meta,
-				Card: &pb.CardPayload{
-					Holder: flagOrPrompt("holder", "Держатель"),
-					Number: flagOrPrompt("number", "Номер"),
+				Card: pb.CardPayload_builder{
+					Holder:   flagOrPrompt("holder", "Держатель"),
+					Number:   flagOrPrompt("number", "Номер"),
 					ExpMonth: flagOrPrompt("exp-month", "Месяц"),
 					ExpYear:  flagOrPrompt("exp-year", "Год"),
 					Cvv:      flagOrPrompt("cvv", "CVV"),
-				},
-			})
+				}.Build(),
+			}.Build())
 			if err != nil {
 				return err
 			}
@@ -237,10 +237,10 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 			return err
 		}
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-			it, err := c.Create(ctx, &pb.UpsertRequest{
+			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "binary", Metadata: meta,
-				Binary: &pb.BinaryPayload{Filename: file, Data: data},
-			})
+				Binary: pb.BinaryPayload_builder{Filename: file, Data: data}.Build(),
+			}.Build())
 			if err != nil {
 				return err
 			}
@@ -265,29 +265,30 @@ func editCmd(addr *string, insc *bool) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-				cur, err := c.Get(ctx, &pb.GetRequest{Id: args[0]})
+				cur, err := c.Get(ctx, pb.GetRequest_builder{Id: args[0]}.Build())
 				if err != nil {
 					return err
 				}
-				req := &pb.UpsertRequest{
+				req := pb.UpsertRequest_builder{
 					Id: args[0], Type: cur.GetType(), Metadata: cur.GetMetadata(),
 					Login: cur.GetLogin(), Text: cur.GetText(), Binary: cur.GetBinary(), Card: cur.GetCard(),
-				}
+				}.Build()
 				if typ != "" {
-					req.Type = typ
+					req.SetType(typ)
 				}
 				if cmd.Flags().Changed("meta") {
-					req.Metadata = meta
+					req.SetMetadata(meta)
 				}
-				if req.GetType() == "login" && req.Login != nil {
+				if req.GetType() == "login" && req.HasLogin() {
+					login := req.GetLogin()
 					if v, _ := cmd.Flags().GetString("url"); cmd.Flags().Changed("url") {
-						req.Login.Url = v
+						login.SetUrl(v)
 					}
 					if v, _ := cmd.Flags().GetString("username"); cmd.Flags().Changed("username") {
-						req.Login.Username = v
+						login.SetUsername(v)
 					}
 					if v, _ := cmd.Flags().GetString("password"); cmd.Flags().Changed("password") {
-						req.Login.Password = v
+						login.SetPassword(v)
 					}
 				}
 				_, err = c.Update(ctx, req)
@@ -310,7 +311,7 @@ func rmCmd(addr *string, insc *bool) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-				_, err := c.Delete(ctx, &pb.DeleteRequest{Id: args[0]})
+				_, err := c.Delete(ctx, pb.DeleteRequest_builder{Id: args[0]}.Build())
 				return err
 			})
 		},
@@ -324,7 +325,7 @@ func syncCmd(addr *string, insc *bool) *cobra.Command {
 		Short: "Забрать изменения с сервера",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
-				resp, err := c.Sync(ctx, &pb.SyncRequest{SinceVersion: since})
+				resp, err := c.Sync(ctx, pb.SyncRequest_builder{SinceVersion: since}.Build())
 				if err != nil {
 					return err
 				}

@@ -51,51 +51,51 @@ func TestGRPCRegisterLoginVaultSync(t *testing.T) {
 	conn, _ := setupGRPC(t)
 	ctx := context.Background()
 	authc := pb.NewAuthServiceClient(conn)
-	tok, err := authc.Register(ctx, &pb.AuthRequest{Login: "ada", Password: "supersecret"})
+	tok, err := authc.Register(ctx, pb.AuthRequest_builder{Login: "ada", Password: "supersecret"}.Build())
 	if err != nil || tok.GetAccessToken() == "" {
 		t.Fatalf("register %v %+v", err, tok)
 	}
-	if _, err := authc.Login(ctx, &pb.AuthRequest{Login: "ada", Password: "wrongpassx"}); status.Code(err) != codes.Unauthenticated {
+	if _, err := authc.Login(ctx, pb.AuthRequest_builder{Login: "ada", Password: "wrongpassx"}.Build()); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("bad login: %v", err)
 	}
 	vaultc := pb.NewVaultServiceClient(conn)
-	if _, err := vaultc.List(ctx, &pb.ListRequest{}); status.Code(err) != codes.Unauthenticated {
+	if _, err := vaultc.List(ctx, pb.ListRequest_builder{}.Build()); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("no token: %v", err)
 	}
 	actx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+tok.GetAccessToken())
-	created, err := vaultc.Create(actx, &pb.UpsertRequest{
+	created, err := vaultc.Create(actx, pb.UpsertRequest_builder{
 		Type: "login", Metadata: "job",
-		Login: &pb.LoginPayload{Url: "https://a", Username: "u", Password: "p"},
-	})
+		Login: pb.LoginPayload_builder{Url: "https://a", Username: "u", Password: "p"}.Build(),
+	}.Build())
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := vaultc.Get(actx, &pb.GetRequest{Id: created.GetId()})
+	got, err := vaultc.Get(actx, pb.GetRequest_builder{Id: created.GetId()}.Build())
 	if err != nil || got.GetLogin().GetUsername() != "u" {
 		t.Fatalf("get %v %+v", err, got)
 	}
-	_, err = vaultc.Update(actx, &pb.UpsertRequest{
+	_, err = vaultc.Update(actx, pb.UpsertRequest_builder{
 		Id: created.GetId(), Type: "login",
-		Login: &pb.LoginPayload{Url: "https://b", Username: "u2", Password: "p2"},
-	})
+		Login: pb.LoginPayload_builder{Url: "https://b", Username: "u2", Password: "p2"}.Build(),
+	}.Build())
 	if err != nil {
 		t.Fatal(err)
 	}
-	list, err := vaultc.List(actx, &pb.ListRequest{Type: "login"})
+	list, err := vaultc.List(actx, pb.ListRequest_builder{Type: "login"}.Build())
 	if err != nil || len(list.GetItems()) != 1 {
 		t.Fatalf("list %v %+v", err, list)
 	}
-	sync, err := vaultc.Sync(actx, &pb.SyncRequest{SinceVersion: 0})
+	sync, err := vaultc.Sync(actx, pb.SyncRequest_builder{SinceVersion: 0}.Build())
 	if err != nil || sync.GetServerVersion() < 1 {
 		t.Fatalf("sync %v %+v", err, sync)
 	}
-	if _, err := vaultc.Delete(actx, &pb.DeleteRequest{Id: created.GetId()}); err != nil {
+	if _, err := vaultc.Delete(actx, pb.DeleteRequest_builder{Id: created.GetId()}.Build()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := vaultc.Get(actx, &pb.GetRequest{Id: created.GetId()}); status.Code(err) != codes.NotFound {
+	if _, err := vaultc.Get(actx, pb.GetRequest_builder{Id: created.GetId()}.Build()); status.Code(err) != codes.NotFound {
 		t.Fatalf("deleted: %v", err)
 	}
-	if _, err := authc.Logout(actx, &pb.LogoutRequest{}); err != nil {
+	if _, err := authc.Logout(actx, pb.LogoutRequest_builder{}.Build()); err != nil {
 		t.Fatal(err)
 	}
 }

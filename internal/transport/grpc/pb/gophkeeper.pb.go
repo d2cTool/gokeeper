@@ -10,7 +10,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -22,7 +21,7 @@ const (
 )
 
 type Empty struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -52,17 +51,24 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Empty.ProtoReflect.Descriptor instead.
-func (*Empty) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{0}
+type Empty_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Empty_builder) Build() *Empty {
+	m0 := &Empty{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 type AuthRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Login         string                 `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Login    string                 `protobuf:"bytes,1,opt,name=login,proto3"`
+	xxx_hidden_Password string                 `protobuf:"bytes,2,opt,name=password,proto3"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AuthRequest) Reset() {
@@ -90,32 +96,51 @@ func (x *AuthRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AuthRequest.ProtoReflect.Descriptor instead.
-func (*AuthRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{1}
-}
-
 func (x *AuthRequest) GetLogin() string {
 	if x != nil {
-		return x.Login
+		return x.xxx_hidden_Login
 	}
 	return ""
 }
 
 func (x *AuthRequest) GetPassword() string {
 	if x != nil {
-		return x.Password
+		return x.xxx_hidden_Password
 	}
 	return ""
 }
 
+func (x *AuthRequest) SetLogin(v string) {
+	x.xxx_hidden_Login = v
+}
+
+func (x *AuthRequest) SetPassword(v string) {
+	x.xxx_hidden_Password = v
+}
+
+type AuthRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Login    string
+	Password string
+}
+
+func (b0 AuthRequest_builder) Build() *AuthRequest {
+	m0 := &AuthRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Login = b.Login
+	x.xxx_hidden_Password = b.Password
+	return m0
+}
+
 type TokenResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	ExpiresIn     int64                  `protobuf:"varint,3,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_AccessToken  string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3"`
+	xxx_hidden_RefreshToken string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3"`
+	xxx_hidden_ExpiresIn    int64                  `protobuf:"varint,3,opt,name=expires_in,json=expiresIn,proto3"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *TokenResponse) Reset() {
@@ -143,34 +168,59 @@ func (x *TokenResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TokenResponse.ProtoReflect.Descriptor instead.
-func (*TokenResponse) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{2}
-}
-
 func (x *TokenResponse) GetAccessToken() string {
 	if x != nil {
-		return x.AccessToken
+		return x.xxx_hidden_AccessToken
 	}
 	return ""
 }
 
 func (x *TokenResponse) GetRefreshToken() string {
 	if x != nil {
-		return x.RefreshToken
+		return x.xxx_hidden_RefreshToken
 	}
 	return ""
 }
 
 func (x *TokenResponse) GetExpiresIn() int64 {
 	if x != nil {
-		return x.ExpiresIn
+		return x.xxx_hidden_ExpiresIn
 	}
 	return 0
 }
 
+func (x *TokenResponse) SetAccessToken(v string) {
+	x.xxx_hidden_AccessToken = v
+}
+
+func (x *TokenResponse) SetRefreshToken(v string) {
+	x.xxx_hidden_RefreshToken = v
+}
+
+func (x *TokenResponse) SetExpiresIn(v int64) {
+	x.xxx_hidden_ExpiresIn = v
+}
+
+type TokenResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int64
+}
+
+func (b0 TokenResponse_builder) Build() *TokenResponse {
+	m0 := &TokenResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_AccessToken = b.AccessToken
+	x.xxx_hidden_RefreshToken = b.RefreshToken
+	x.xxx_hidden_ExpiresIn = b.ExpiresIn
+	return m0
+}
+
 type LogoutRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -200,18 +250,25 @@ func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LogoutRequest.ProtoReflect.Descriptor instead.
-func (*LogoutRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{3}
+type LogoutRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 LogoutRequest_builder) Build() *LogoutRequest {
+	m0 := &LogoutRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 type LoginPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Url      string                 `protobuf:"bytes,1,opt,name=url,proto3"`
+	xxx_hidden_Username string                 `protobuf:"bytes,2,opt,name=username,proto3"`
+	xxx_hidden_Password string                 `protobuf:"bytes,3,opt,name=password,proto3"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *LoginPayload) Reset() {
@@ -239,38 +296,63 @@ func (x *LoginPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LoginPayload.ProtoReflect.Descriptor instead.
-func (*LoginPayload) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{4}
-}
-
 func (x *LoginPayload) GetUrl() string {
 	if x != nil {
-		return x.Url
+		return x.xxx_hidden_Url
 	}
 	return ""
 }
 
 func (x *LoginPayload) GetUsername() string {
 	if x != nil {
-		return x.Username
+		return x.xxx_hidden_Username
 	}
 	return ""
 }
 
 func (x *LoginPayload) GetPassword() string {
 	if x != nil {
-		return x.Password
+		return x.xxx_hidden_Password
 	}
 	return ""
 }
 
+func (x *LoginPayload) SetUrl(v string) {
+	x.xxx_hidden_Url = v
+}
+
+func (x *LoginPayload) SetUsername(v string) {
+	x.xxx_hidden_Username = v
+}
+
+func (x *LoginPayload) SetPassword(v string) {
+	x.xxx_hidden_Password = v
+}
+
+type LoginPayload_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Url      string
+	Username string
+	Password string
+}
+
+func (b0 LoginPayload_builder) Build() *LoginPayload {
+	m0 := &LoginPayload{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Url = b.Url
+	x.xxx_hidden_Username = b.Username
+	x.xxx_hidden_Password = b.Password
+	return m0
+}
+
 type TextPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	Body          string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Title string                 `protobuf:"bytes,1,opt,name=title,proto3"`
+	xxx_hidden_Body  string                 `protobuf:"bytes,2,opt,name=body,proto3"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *TextPayload) Reset() {
@@ -298,31 +380,50 @@ func (x *TextPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TextPayload.ProtoReflect.Descriptor instead.
-func (*TextPayload) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{5}
-}
-
 func (x *TextPayload) GetTitle() string {
 	if x != nil {
-		return x.Title
+		return x.xxx_hidden_Title
 	}
 	return ""
 }
 
 func (x *TextPayload) GetBody() string {
 	if x != nil {
-		return x.Body
+		return x.xxx_hidden_Body
 	}
 	return ""
 }
 
+func (x *TextPayload) SetTitle(v string) {
+	x.xxx_hidden_Title = v
+}
+
+func (x *TextPayload) SetBody(v string) {
+	x.xxx_hidden_Body = v
+}
+
+type TextPayload_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Title string
+	Body  string
+}
+
+func (b0 TextPayload_builder) Build() *TextPayload {
+	m0 := &TextPayload{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Title = b.Title
+	x.xxx_hidden_Body = b.Body
+	return m0
+}
+
 type BinaryPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Filename string                 `protobuf:"bytes,1,opt,name=filename,proto3"`
+	xxx_hidden_Data     []byte                 `protobuf:"bytes,2,opt,name=data,proto3"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *BinaryPayload) Reset() {
@@ -350,34 +451,56 @@ func (x *BinaryPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BinaryPayload.ProtoReflect.Descriptor instead.
-func (*BinaryPayload) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{6}
-}
-
 func (x *BinaryPayload) GetFilename() string {
 	if x != nil {
-		return x.Filename
+		return x.xxx_hidden_Filename
 	}
 	return ""
 }
 
 func (x *BinaryPayload) GetData() []byte {
 	if x != nil {
-		return x.Data
+		return x.xxx_hidden_Data
 	}
 	return nil
 }
 
+func (x *BinaryPayload) SetFilename(v string) {
+	x.xxx_hidden_Filename = v
+}
+
+func (x *BinaryPayload) SetData(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Data = v
+}
+
+type BinaryPayload_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Filename string
+	Data     []byte
+}
+
+func (b0 BinaryPayload_builder) Build() *BinaryPayload {
+	m0 := &BinaryPayload{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Filename = b.Filename
+	x.xxx_hidden_Data = b.Data
+	return m0
+}
+
 type CardPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Holder        string                 `protobuf:"bytes,1,opt,name=holder,proto3" json:"holder,omitempty"`
-	Number        string                 `protobuf:"bytes,2,opt,name=number,proto3" json:"number,omitempty"`
-	ExpMonth      string                 `protobuf:"bytes,3,opt,name=exp_month,json=expMonth,proto3" json:"exp_month,omitempty"`
-	ExpYear       string                 `protobuf:"bytes,4,opt,name=exp_year,json=expYear,proto3" json:"exp_year,omitempty"`
-	Cvv           string                 `protobuf:"bytes,5,opt,name=cvv,proto3" json:"cvv,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Holder   string                 `protobuf:"bytes,1,opt,name=holder,proto3"`
+	xxx_hidden_Number   string                 `protobuf:"bytes,2,opt,name=number,proto3"`
+	xxx_hidden_ExpMonth string                 `protobuf:"bytes,3,opt,name=exp_month,json=expMonth,proto3"`
+	xxx_hidden_ExpYear  string                 `protobuf:"bytes,4,opt,name=exp_year,json=expYear,proto3"`
+	xxx_hidden_Cvv      string                 `protobuf:"bytes,5,opt,name=cvv,proto3"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CardPayload) Reset() {
@@ -405,60 +528,97 @@ func (x *CardPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CardPayload.ProtoReflect.Descriptor instead.
-func (*CardPayload) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{7}
-}
-
 func (x *CardPayload) GetHolder() string {
 	if x != nil {
-		return x.Holder
+		return x.xxx_hidden_Holder
 	}
 	return ""
 }
 
 func (x *CardPayload) GetNumber() string {
 	if x != nil {
-		return x.Number
+		return x.xxx_hidden_Number
 	}
 	return ""
 }
 
 func (x *CardPayload) GetExpMonth() string {
 	if x != nil {
-		return x.ExpMonth
+		return x.xxx_hidden_ExpMonth
 	}
 	return ""
 }
 
 func (x *CardPayload) GetExpYear() string {
 	if x != nil {
-		return x.ExpYear
+		return x.xxx_hidden_ExpYear
 	}
 	return ""
 }
 
 func (x *CardPayload) GetCvv() string {
 	if x != nil {
-		return x.Cvv
+		return x.xxx_hidden_Cvv
 	}
 	return ""
 }
 
+func (x *CardPayload) SetHolder(v string) {
+	x.xxx_hidden_Holder = v
+}
+
+func (x *CardPayload) SetNumber(v string) {
+	x.xxx_hidden_Number = v
+}
+
+func (x *CardPayload) SetExpMonth(v string) {
+	x.xxx_hidden_ExpMonth = v
+}
+
+func (x *CardPayload) SetExpYear(v string) {
+	x.xxx_hidden_ExpYear = v
+}
+
+func (x *CardPayload) SetCvv(v string) {
+	x.xxx_hidden_Cvv = v
+}
+
+type CardPayload_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Holder   string
+	Number   string
+	ExpMonth string
+	ExpYear  string
+	Cvv      string
+}
+
+func (b0 CardPayload_builder) Build() *CardPayload {
+	m0 := &CardPayload{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Holder = b.Holder
+	x.xxx_hidden_Number = b.Number
+	x.xxx_hidden_ExpMonth = b.ExpMonth
+	x.xxx_hidden_ExpYear = b.ExpYear
+	x.xxx_hidden_Cvv = b.Cvv
+	return m0
+}
+
 type Item struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Metadata      string                 `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Version       int64                  `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	UpdatedAt     int64                  `protobuf:"varint,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Deleted       bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
-	Login         *LoginPayload          `protobuf:"bytes,7,opt,name=login,proto3" json:"login,omitempty"`
-	Text          *TextPayload           `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
-	Binary        *BinaryPayload         `protobuf:"bytes,9,opt,name=binary,proto3" json:"binary,omitempty"`
-	Card          *CardPayload           `protobuf:"bytes,10,opt,name=card,proto3" json:"card,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id        string                 `protobuf:"bytes,1,opt,name=id,proto3"`
+	xxx_hidden_Type      string                 `protobuf:"bytes,2,opt,name=type,proto3"`
+	xxx_hidden_Metadata  string                 `protobuf:"bytes,3,opt,name=metadata,proto3"`
+	xxx_hidden_Version   int64                  `protobuf:"varint,4,opt,name=version,proto3"`
+	xxx_hidden_UpdatedAt int64                  `protobuf:"varint,5,opt,name=updated_at,json=updatedAt,proto3"`
+	xxx_hidden_Deleted   bool                   `protobuf:"varint,6,opt,name=deleted,proto3"`
+	xxx_hidden_Login     *LoginPayload          `protobuf:"bytes,7,opt,name=login,proto3"`
+	xxx_hidden_Text      *TextPayload           `protobuf:"bytes,8,opt,name=text,proto3"`
+	xxx_hidden_Binary    *BinaryPayload         `protobuf:"bytes,9,opt,name=binary,proto3"`
+	xxx_hidden_Card      *CardPayload           `protobuf:"bytes,10,opt,name=card,proto3"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Item) Reset() {
@@ -486,86 +646,197 @@ func (x *Item) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Item.ProtoReflect.Descriptor instead.
-func (*Item) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{8}
-}
-
 func (x *Item) GetId() string {
 	if x != nil {
-		return x.Id
+		return x.xxx_hidden_Id
 	}
 	return ""
 }
 
 func (x *Item) GetType() string {
 	if x != nil {
-		return x.Type
+		return x.xxx_hidden_Type
 	}
 	return ""
 }
 
 func (x *Item) GetMetadata() string {
 	if x != nil {
-		return x.Metadata
+		return x.xxx_hidden_Metadata
 	}
 	return ""
 }
 
 func (x *Item) GetVersion() int64 {
 	if x != nil {
-		return x.Version
+		return x.xxx_hidden_Version
 	}
 	return 0
 }
 
 func (x *Item) GetUpdatedAt() int64 {
 	if x != nil {
-		return x.UpdatedAt
+		return x.xxx_hidden_UpdatedAt
 	}
 	return 0
 }
 
 func (x *Item) GetDeleted() bool {
 	if x != nil {
-		return x.Deleted
+		return x.xxx_hidden_Deleted
 	}
 	return false
 }
 
 func (x *Item) GetLogin() *LoginPayload {
 	if x != nil {
-		return x.Login
+		return x.xxx_hidden_Login
 	}
 	return nil
 }
 
 func (x *Item) GetText() *TextPayload {
 	if x != nil {
-		return x.Text
+		return x.xxx_hidden_Text
 	}
 	return nil
 }
 
 func (x *Item) GetBinary() *BinaryPayload {
 	if x != nil {
-		return x.Binary
+		return x.xxx_hidden_Binary
 	}
 	return nil
 }
 
 func (x *Item) GetCard() *CardPayload {
 	if x != nil {
-		return x.Card
+		return x.xxx_hidden_Card
 	}
 	return nil
 }
 
+func (x *Item) SetId(v string) {
+	x.xxx_hidden_Id = v
+}
+
+func (x *Item) SetType(v string) {
+	x.xxx_hidden_Type = v
+}
+
+func (x *Item) SetMetadata(v string) {
+	x.xxx_hidden_Metadata = v
+}
+
+func (x *Item) SetVersion(v int64) {
+	x.xxx_hidden_Version = v
+}
+
+func (x *Item) SetUpdatedAt(v int64) {
+	x.xxx_hidden_UpdatedAt = v
+}
+
+func (x *Item) SetDeleted(v bool) {
+	x.xxx_hidden_Deleted = v
+}
+
+func (x *Item) SetLogin(v *LoginPayload) {
+	x.xxx_hidden_Login = v
+}
+
+func (x *Item) SetText(v *TextPayload) {
+	x.xxx_hidden_Text = v
+}
+
+func (x *Item) SetBinary(v *BinaryPayload) {
+	x.xxx_hidden_Binary = v
+}
+
+func (x *Item) SetCard(v *CardPayload) {
+	x.xxx_hidden_Card = v
+}
+
+func (x *Item) HasLogin() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Login != nil
+}
+
+func (x *Item) HasText() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Text != nil
+}
+
+func (x *Item) HasBinary() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Binary != nil
+}
+
+func (x *Item) HasCard() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Card != nil
+}
+
+func (x *Item) ClearLogin() {
+	x.xxx_hidden_Login = nil
+}
+
+func (x *Item) ClearText() {
+	x.xxx_hidden_Text = nil
+}
+
+func (x *Item) ClearBinary() {
+	x.xxx_hidden_Binary = nil
+}
+
+func (x *Item) ClearCard() {
+	x.xxx_hidden_Card = nil
+}
+
+type Item_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id        string
+	Type      string
+	Metadata  string
+	Version   int64
+	UpdatedAt int64
+	Deleted   bool
+	Login     *LoginPayload
+	Text      *TextPayload
+	Binary    *BinaryPayload
+	Card      *CardPayload
+}
+
+func (b0 Item_builder) Build() *Item {
+	m0 := &Item{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	x.xxx_hidden_Type = b.Type
+	x.xxx_hidden_Metadata = b.Metadata
+	x.xxx_hidden_Version = b.Version
+	x.xxx_hidden_UpdatedAt = b.UpdatedAt
+	x.xxx_hidden_Deleted = b.Deleted
+	x.xxx_hidden_Login = b.Login
+	x.xxx_hidden_Text = b.Text
+	x.xxx_hidden_Binary = b.Binary
+	x.xxx_hidden_Card = b.Card
+	return m0
+}
+
 type ListRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Type string                 `protobuf:"bytes,1,opt,name=type,proto3"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ListRequest) Reset() {
@@ -593,23 +864,36 @@ func (x *ListRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
-func (*ListRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{9}
-}
-
 func (x *ListRequest) GetType() string {
 	if x != nil {
-		return x.Type
+		return x.xxx_hidden_Type
 	}
 	return ""
 }
 
+func (x *ListRequest) SetType(v string) {
+	x.xxx_hidden_Type = v
+}
+
+type ListRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Type string
+}
+
+func (b0 ListRequest_builder) Build() *ListRequest {
+	m0 := &ListRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Type = b.Type
+	return m0
+}
+
 type ListResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*Item                `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Items *[]*Item               `protobuf:"bytes,1,rep,name=items,proto3"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ListResponse) Reset() {
@@ -637,21 +921,36 @@ func (x *ListResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
-func (*ListResponse) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{10}
-}
-
 func (x *ListResponse) GetItems() []*Item {
 	if x != nil {
-		return x.Items
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
 	}
 	return nil
 }
 
+func (x *ListResponse) SetItems(v []*Item) {
+	x.xxx_hidden_Items = &v
+}
+
+type ListResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Items []*Item
+}
+
+func (b0 ListResponse_builder) Build() *ListResponse {
+	m0 := &ListResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	return m0
+}
+
 type GetRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id string                 `protobuf:"bytes,1,opt,name=id,proto3"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -681,29 +980,42 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
-func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{11}
-}
-
 func (x *GetRequest) GetId() string {
 	if x != nil {
-		return x.Id
+		return x.xxx_hidden_Id
 	}
 	return ""
 }
 
+func (x *GetRequest) SetId(v string) {
+	x.xxx_hidden_Id = v
+}
+
+type GetRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id string
+}
+
+func (b0 GetRequest_builder) Build() *GetRequest {
+	m0 := &GetRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	return m0
+}
+
 type UpsertRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Metadata      string                 `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Login         *LoginPayload          `protobuf:"bytes,4,opt,name=login,proto3" json:"login,omitempty"`
-	Text          *TextPayload           `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
-	Binary        *BinaryPayload         `protobuf:"bytes,6,opt,name=binary,proto3" json:"binary,omitempty"`
-	Card          *CardPayload           `protobuf:"bytes,7,opt,name=card,proto3" json:"card,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id       string                 `protobuf:"bytes,1,opt,name=id,proto3"`
+	xxx_hidden_Type     string                 `protobuf:"bytes,2,opt,name=type,proto3"`
+	xxx_hidden_Metadata string                 `protobuf:"bytes,3,opt,name=metadata,proto3"`
+	xxx_hidden_Login    *LoginPayload          `protobuf:"bytes,4,opt,name=login,proto3"`
+	xxx_hidden_Text     *TextPayload           `protobuf:"bytes,5,opt,name=text,proto3"`
+	xxx_hidden_Binary   *BinaryPayload         `protobuf:"bytes,6,opt,name=binary,proto3"`
+	xxx_hidden_Card     *CardPayload           `protobuf:"bytes,7,opt,name=card,proto3"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *UpsertRequest) Reset() {
@@ -731,63 +1043,156 @@ func (x *UpsertRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpsertRequest.ProtoReflect.Descriptor instead.
-func (*UpsertRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{12}
-}
-
 func (x *UpsertRequest) GetId() string {
 	if x != nil {
-		return x.Id
+		return x.xxx_hidden_Id
 	}
 	return ""
 }
 
 func (x *UpsertRequest) GetType() string {
 	if x != nil {
-		return x.Type
+		return x.xxx_hidden_Type
 	}
 	return ""
 }
 
 func (x *UpsertRequest) GetMetadata() string {
 	if x != nil {
-		return x.Metadata
+		return x.xxx_hidden_Metadata
 	}
 	return ""
 }
 
 func (x *UpsertRequest) GetLogin() *LoginPayload {
 	if x != nil {
-		return x.Login
+		return x.xxx_hidden_Login
 	}
 	return nil
 }
 
 func (x *UpsertRequest) GetText() *TextPayload {
 	if x != nil {
-		return x.Text
+		return x.xxx_hidden_Text
 	}
 	return nil
 }
 
 func (x *UpsertRequest) GetBinary() *BinaryPayload {
 	if x != nil {
-		return x.Binary
+		return x.xxx_hidden_Binary
 	}
 	return nil
 }
 
 func (x *UpsertRequest) GetCard() *CardPayload {
 	if x != nil {
-		return x.Card
+		return x.xxx_hidden_Card
 	}
 	return nil
 }
 
+func (x *UpsertRequest) SetId(v string) {
+	x.xxx_hidden_Id = v
+}
+
+func (x *UpsertRequest) SetType(v string) {
+	x.xxx_hidden_Type = v
+}
+
+func (x *UpsertRequest) SetMetadata(v string) {
+	x.xxx_hidden_Metadata = v
+}
+
+func (x *UpsertRequest) SetLogin(v *LoginPayload) {
+	x.xxx_hidden_Login = v
+}
+
+func (x *UpsertRequest) SetText(v *TextPayload) {
+	x.xxx_hidden_Text = v
+}
+
+func (x *UpsertRequest) SetBinary(v *BinaryPayload) {
+	x.xxx_hidden_Binary = v
+}
+
+func (x *UpsertRequest) SetCard(v *CardPayload) {
+	x.xxx_hidden_Card = v
+}
+
+func (x *UpsertRequest) HasLogin() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Login != nil
+}
+
+func (x *UpsertRequest) HasText() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Text != nil
+}
+
+func (x *UpsertRequest) HasBinary() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Binary != nil
+}
+
+func (x *UpsertRequest) HasCard() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Card != nil
+}
+
+func (x *UpsertRequest) ClearLogin() {
+	x.xxx_hidden_Login = nil
+}
+
+func (x *UpsertRequest) ClearText() {
+	x.xxx_hidden_Text = nil
+}
+
+func (x *UpsertRequest) ClearBinary() {
+	x.xxx_hidden_Binary = nil
+}
+
+func (x *UpsertRequest) ClearCard() {
+	x.xxx_hidden_Card = nil
+}
+
+type UpsertRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id       string
+	Type     string
+	Metadata string
+	Login    *LoginPayload
+	Text     *TextPayload
+	Binary   *BinaryPayload
+	Card     *CardPayload
+}
+
+func (b0 UpsertRequest_builder) Build() *UpsertRequest {
+	m0 := &UpsertRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	x.xxx_hidden_Type = b.Type
+	x.xxx_hidden_Metadata = b.Metadata
+	x.xxx_hidden_Login = b.Login
+	x.xxx_hidden_Text = b.Text
+	x.xxx_hidden_Binary = b.Binary
+	x.xxx_hidden_Card = b.Card
+	return m0
+}
+
 type DeleteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id string                 `protobuf:"bytes,1,opt,name=id,proto3"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -817,24 +1222,37 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
-func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{13}
-}
-
 func (x *DeleteRequest) GetId() string {
 	if x != nil {
-		return x.Id
+		return x.xxx_hidden_Id
 	}
 	return ""
 }
 
+func (x *DeleteRequest) SetId(v string) {
+	x.xxx_hidden_Id = v
+}
+
+type DeleteRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id string
+}
+
+func (b0 DeleteRequest_builder) Build() *DeleteRequest {
+	m0 := &DeleteRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	return m0
+}
+
 type SyncRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SinceVersion  int64                  `protobuf:"varint,1,opt,name=since_version,json=sinceVersion,proto3" json:"since_version,omitempty"`
-	Items         []*Item                `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SinceVersion int64                  `protobuf:"varint,1,opt,name=since_version,json=sinceVersion,proto3"`
+	xxx_hidden_Items        *[]*Item               `protobuf:"bytes,2,rep,name=items,proto3"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *SyncRequest) Reset() {
@@ -862,31 +1280,52 @@ func (x *SyncRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncRequest.ProtoReflect.Descriptor instead.
-func (*SyncRequest) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{14}
-}
-
 func (x *SyncRequest) GetSinceVersion() int64 {
 	if x != nil {
-		return x.SinceVersion
+		return x.xxx_hidden_SinceVersion
 	}
 	return 0
 }
 
 func (x *SyncRequest) GetItems() []*Item {
 	if x != nil {
-		return x.Items
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
 	}
 	return nil
 }
 
+func (x *SyncRequest) SetSinceVersion(v int64) {
+	x.xxx_hidden_SinceVersion = v
+}
+
+func (x *SyncRequest) SetItems(v []*Item) {
+	x.xxx_hidden_Items = &v
+}
+
+type SyncRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SinceVersion int64
+	Items        []*Item
+}
+
+func (b0 SyncRequest_builder) Build() *SyncRequest {
+	m0 := &SyncRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_SinceVersion = b.SinceVersion
+	x.xxx_hidden_Items = &b.Items
+	return m0
+}
+
 type SyncResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*Item                `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	ServerVersion int64                  `protobuf:"varint,2,opt,name=server_version,json=serverVersion,proto3" json:"server_version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Items         *[]*Item               `protobuf:"bytes,1,rep,name=items,proto3"`
+	xxx_hidden_ServerVersion int64                  `protobuf:"varint,2,opt,name=server_version,json=serverVersion,proto3"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *SyncResponse) Reset() {
@@ -914,23 +1353,44 @@ func (x *SyncResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SyncResponse.ProtoReflect.Descriptor instead.
-func (*SyncResponse) Descriptor() ([]byte, []int) {
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP(), []int{15}
-}
-
 func (x *SyncResponse) GetItems() []*Item {
 	if x != nil {
-		return x.Items
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
 	}
 	return nil
 }
 
 func (x *SyncResponse) GetServerVersion() int64 {
 	if x != nil {
-		return x.ServerVersion
+		return x.xxx_hidden_ServerVersion
 	}
 	return 0
+}
+
+func (x *SyncResponse) SetItems(v []*Item) {
+	x.xxx_hidden_Items = &v
+}
+
+func (x *SyncResponse) SetServerVersion(v int64) {
+	x.xxx_hidden_ServerVersion = v
+}
+
+type SyncResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Items         []*Item
+	ServerVersion int64
+}
+
+func (b0 SyncResponse_builder) Build() *SyncResponse {
+	m0 := &SyncResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	x.xxx_hidden_ServerVersion = b.ServerVersion
+	return m0
 }
 
 var File_gophkeeper_v1_gophkeeper_proto protoreflect.FileDescriptor
@@ -1011,18 +1471,6 @@ const file_gophkeeper_v1_gophkeeper_proto_rawDesc = "" +
 	"\x06Update\x12\x1c.gophkeeper.v1.UpsertRequest\x1a\x13.gophkeeper.v1.Item\x12<\n" +
 	"\x06Delete\x12\x1c.gophkeeper.v1.DeleteRequest\x1a\x14.gophkeeper.v1.Empty\x12?\n" +
 	"\x04Sync\x12\x1a.gophkeeper.v1.SyncRequest\x1a\x1b.gophkeeper.v1.SyncResponseB(Z&gokeeper/internal/transport/grpc/pb;pbb\x06proto3"
-
-var (
-	file_gophkeeper_v1_gophkeeper_proto_rawDescOnce sync.Once
-	file_gophkeeper_v1_gophkeeper_proto_rawDescData []byte
-)
-
-func file_gophkeeper_v1_gophkeeper_proto_rawDescGZIP() []byte {
-	file_gophkeeper_v1_gophkeeper_proto_rawDescOnce.Do(func() {
-		file_gophkeeper_v1_gophkeeper_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_gophkeeper_v1_gophkeeper_proto_rawDesc), len(file_gophkeeper_v1_gophkeeper_proto_rawDesc)))
-	})
-	return file_gophkeeper_v1_gophkeeper_proto_rawDescData
-}
 
 var file_gophkeeper_v1_gophkeeper_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_gophkeeper_v1_gophkeeper_proto_goTypes = []any{
