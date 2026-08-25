@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package gophkeeper.v1;
+
+option go_package = "gokeeper/internal/transport/grpc/pb;pb";
+
+// AuthService регистрирует пользователей и выдаёт JWT.
+service AuthService {
+  rpc Register(AuthRequest) returns (TokenResponse);
+  rpc Login(AuthRequest) returns (TokenResponse);
+  rpc Logout(LogoutRequest) returns (Empty);
+}
+
+// VaultService отдаёт расшифрованные секреты владельцу сессии.
+service VaultService {
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Get(GetRequest) returns (Item);
+  rpc Create(UpsertRequest) returns (Item);
+  rpc Update(UpsertRequest) returns (Item);
+  rpc Delete(DeleteRequest) returns (Empty);
+  rpc Sync(SyncRequest) returns (SyncResponse);
+}
+
+message Empty {}
+
+message AuthRequest {
+  string login = 1;
+  string password = 2;
+}
+
+message TokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in = 3;
+}
+
+message LogoutRequest {}
+
+message LoginPayload {
+  string url = 1;
+  string username = 2;
+  string password = 3;
+}
+
+message TextPayload {
+  string title = 1;
+  string body = 2;
+}
+
+message BinaryPayload {
+  string filename = 1;
+  bytes data = 2;
+}
+
+message CardPayload {
+  string holder = 1;
+  string number = 2;
+  string exp_month = 3;
+  string exp_year = 4;
+  string cvv = 5;
+}
+
+message Item {
+  string id = 1;
+  string type = 2;
+  string metadata = 3;
+  int64 version = 4;
+  int64 updated_at = 5;
+  bool deleted = 6;
+  LoginPayload login = 7;
+  TextPayload text = 8;
+  BinaryPayload binary = 9;
+  CardPayload card = 10;
+}
+
+message ListRequest {
+  string type = 1;
+}
+
+message ListResponse {
+  repeated Item items = 1;
+}
+
+message GetRequest {
+  string id = 1;
+}
+
+message UpsertRequest {
+  string id = 1;
+  string type = 2;
+  string metadata = 3;
+  LoginPayload login = 4;
+  TextPayload text = 5;
+  BinaryPayload binary = 6;
+  CardPayload card = 7;
+}
+
+message DeleteRequest {
+  string id = 1;
+}
+
+message SyncRequest {
+  int64 since_version = 1;
+  repeated Item items = 2;
+}
+
+message SyncResponse {
+  repeated Item items = 1;
+  int64 server_version = 2;
+}

@@ -1,0 +1,450 @@
+// Command gophkeeper — кроссплатформенный gRPC CLI для GophKeeper.
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+
+	"gokeeper/internal/clientcfg"
+	"gokeeper/internal/transport/grpc/pb"
+	"gokeeper/pkg/version"
+)
+
+func main() {
+	if err := rootCmd().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func rootCmd() *cobra.Command {
+	var (
+		addr     string
+		insecure bool
+	)
+	cmd := &cobra.Command{
+		Use:   "gophkeeper",
+		Short: "CLI-клиент GophKeeper (gRPC)",
+	}
+	cmd.PersistentFlags().StringVar(&addr, "addr", "", "хост:порт gRPC (по умолчанию из конфига)")
+	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "без TLS")
+	cmd.AddCommand(
+		versionCmd(),
+		registerCmd(&addr, &insecure),
+		loginCmd(&addr, &insecure),
+		logoutCmd(&addr, &insecure),
+		listCmd(&addr, &insecure),
+		getCmd(&addr, &insecure),
+		addCmd(&addr, &insecure),
+		editCmd(&addr, &insecure),
+		rmCmd(&addr, &insecure),
+		syncCmd(&addr, &insecure),
+	)
+	return cmd
+}
+
+func versionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Версия и дата сборки клиента",
+		Run: func(_ *cobra.Command, _ []string) {
+			info := version.Current()
+			fmt.Printf("gophkeeper %s\nbuild: %s\ngo: %s %s/%s\n",
+				info.Version, info.BuildDate, info.GoVersion, info.OS, info.Arch)
+		},
+	}
+}
+
+func registerCmd(addr *string, insc *bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   "register [login]",
+		Short: "Регистрация на сервере",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			login, pass, err := credentialsFromArgs(args)
+			if err != nil {
+				return err
+			}
+			return withAuthClient(*addr, *insc, false, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
+				resp, err := c.Register(ctx, &pb.AuthRequest{Login: login, Password: pass})
+				if err != nil {
+					return err
+				}
+				return saveTokens(cfg, resp, *addr, *insc)
+			})
+		},
+	}
+}
+
+func loginCmd(addr *string, insc *bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   "login [login]",
+		Short: "Вход и сохранение JWT",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			login, pass, err := credentialsFromArgs(args)
+			if err != nil {
+				return err
+			}
+			return withAuthClient(*addr, *insc, false, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
+				resp, err := c.Login(ctx, &pb.AuthRequest{Login: login, Password: pass})
+				if err != nil {
+					return err
+				}
+				return saveTokens(cfg, resp, *addr, *insc)
+			})
+		},
+	}
+}
+
+func logoutCmd(addr *string, insc *bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   "logout",
+		Short: "Завершить сессию",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withAuthClient(*addr, *insc, true, func(ctx context.Context, c pb.AuthServiceClient, cfg clientcfg.Config) error {
+				_, err := c.Logout(ctx, &pb.LogoutRequest{})
+				cfg.Token = ""
+				_ = cfg.Save()
+				return err
+			})
+		},
+	}
+}
+
+func listCmd(addr *string, insc *bool) *cobra.Command {
+	var typ string
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "Список записей",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+				resp, err := c.List(ctx, &pb.ListRequest{Type: typ})
+				if err != nil {
+					return err
+				}
+				return printJSON(resp.GetItems())
+			})
+		},
+	}
+	cmd.Flags().StringVar(&typ, "type", "", "login|text|card|binary")
+	return cmd
+}
+
+func getCmd(addr *string, insc *bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get <id>",
+		Short: "Показать запись",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+				it, err := c.Get(ctx, &pb.GetRequest{Id: args[0]})
+				if err != nil {
+					return err
+				}
+				return printJSON(it)
+			})
+		},
+	}
+}
+
+func addCmd(addr *string, insc *bool) *cobra.Command {
+	cmd := &cobra.Command{Use: "add", Short: "Добавить запись"}
+	var meta string
+	login := &cobra.Command{Use: "login", Short: "Логин/пароль", RunE: func(_ *cobra.Command, _ []string) error {
+		url := flagOrPrompt("url", "URL")
+		user := flagOrPrompt("username", "Логин")
+		pass := flagOrPrompt("password", "Пароль")
+		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+			it, err := c.Create(ctx, &pb.UpsertRequest{
+				Type: "login", Metadata: meta,
+				Login: &pb.LoginPayload{Url: url, Username: user, Password: pass},
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println(it.GetId())
+			return nil
+		})
+	}}
+	login.Flags().String("url", "", "")
+	login.Flags().String("username", "", "")
+	login.Flags().String("password", "", "")
+
+	text := &cobra.Command{Use: "text", Short: "Текст", RunE: func(_ *cobra.Command, _ []string) error {
+		title := flagOrPrompt("title", "Заголовок")
+		body := flagOrPrompt("body", "Текст")
+		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+			it, err := c.Create(ctx, &pb.UpsertRequest{
+				Type: "text", Metadata: meta,
+				Text: &pb.TextPayload{Title: title, Body: body},
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println(it.GetId())
+			return nil
+		})
+	}}
+	text.Flags().String("title", "", "")
+	text.Flags().String("body", "", "")
+
+	card := &cobra.Command{Use: "card", Short: "Банковская карта", RunE: func(_ *cobra.Command, _ []string) error {
+		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+			it, err := c.Create(ctx, &pb.UpsertRequest{
+				Type: "card", Metadata: meta,
+				Card: &pb.CardPayload{
+					Holder: flagOrPrompt("holder", "Держатель"),
+					Number: flagOrPrompt("number", "Номер"),
+					ExpMonth: flagOrPrompt("exp-month", "Месяц"),
+					ExpYear:  flagOrPrompt("exp-year", "Год"),
+					Cvv:      flagOrPrompt("cvv", "CVV"),
+				},
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println(it.GetId())
+			return nil
+		})
+	}}
+	card.Flags().String("holder", "", "")
+	card.Flags().String("number", "", "")
+	card.Flags().String("exp-month", "", "")
+	card.Flags().String("exp-year", "", "")
+	card.Flags().String("cvv", "", "")
+
+	var file string
+	binary := &cobra.Command{Use: "binary", Short: "Файл", RunE: func(_ *cobra.Command, _ []string) error {
+		if file == "" {
+			return fmt.Errorf("--file обязателен")
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+			it, err := c.Create(ctx, &pb.UpsertRequest{
+				Type: "binary", Metadata: meta,
+				Binary: &pb.BinaryPayload{Filename: file, Data: data},
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println(it.GetId())
+			return nil
+		})
+	}}
+	binary.Flags().StringVar(&file, "file", "", "путь к файлу")
+
+	for _, c := range []*cobra.Command{login, text, card, binary} {
+		c.Flags().StringVar(&meta, "meta", "", "текстовые метаданные")
+		cmd.AddCommand(c)
+	}
+	return cmd
+}
+
+func editCmd(addr *string, insc *bool) *cobra.Command {
+	var meta, typ string
+	cmd := &cobra.Command{
+		Use:   "edit <id>",
+		Short: "Изменить запись (поля через флаги)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+				cur, err := c.Get(ctx, &pb.GetRequest{Id: args[0]})
+				if err != nil {
+					return err
+				}
+				req := &pb.UpsertRequest{
+					Id: args[0], Type: cur.GetType(), Metadata: cur.GetMetadata(),
+					Login: cur.GetLogin(), Text: cur.GetText(), Binary: cur.GetBinary(), Card: cur.GetCard(),
+				}
+				if typ != "" {
+					req.Type = typ
+				}
+				if cmd.Flags().Changed("meta") {
+					req.Metadata = meta
+				}
+				if req.GetType() == "login" && req.Login != nil {
+					if v, _ := cmd.Flags().GetString("url"); cmd.Flags().Changed("url") {
+						req.Login.Url = v
+					}
+					if v, _ := cmd.Flags().GetString("username"); cmd.Flags().Changed("username") {
+						req.Login.Username = v
+					}
+					if v, _ := cmd.Flags().GetString("password"); cmd.Flags().Changed("password") {
+						req.Login.Password = v
+					}
+				}
+				_, err = c.Update(ctx, req)
+				return err
+			})
+		},
+	}
+	cmd.Flags().StringVar(&meta, "meta", "", "")
+	cmd.Flags().StringVar(&typ, "type", "", "")
+	cmd.Flags().String("url", "", "")
+	cmd.Flags().String("username", "", "")
+	cmd.Flags().String("password", "", "")
+	return cmd
+}
+
+func rmCmd(addr *string, insc *bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   "rm <id>",
+		Short: "Удалить запись",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+				_, err := c.Delete(ctx, &pb.DeleteRequest{Id: args[0]})
+				return err
+			})
+		},
+	}
+}
+
+func syncCmd(addr *string, insc *bool) *cobra.Command {
+	var since int64
+	cmd := &cobra.Command{
+		Use:   "sync",
+		Short: "Забрать изменения с сервера",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
+				resp, err := c.Sync(ctx, &pb.SyncRequest{SinceVersion: since})
+				if err != nil {
+					return err
+				}
+				fmt.Println("server_version", resp.GetServerVersion())
+				return printJSON(resp.GetItems())
+			})
+		},
+	}
+	cmd.Flags().Int64Var(&since, "since", 0, "версия, после которой забирать дельту")
+	return cmd
+}
+
+func credentialsFromArgs(args []string) (string, string, error) {
+	login := os.Getenv("GOPHKEEPER_LOGIN")
+	if len(args) > 0 {
+		login = args[0]
+	}
+	if login == "" {
+		fmt.Fprint(os.Stderr, "логин: ")
+		if _, err := fmt.Scanln(&login); err != nil {
+			return "", "", err
+		}
+	}
+	pass := os.Getenv("GOPHKEEPER_PASSWORD")
+	if pass == "" {
+		fmt.Fprint(os.Stderr, "пароль: ")
+		b, err := term.ReadPassword(int(syscall.Stdin))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return "", "", err
+		}
+		pass = string(b)
+	}
+	return strings.TrimSpace(login), pass, nil
+}
+
+func flagOrPrompt(name, label string) string {
+	// значения читаются из текущего cobra-команды через os.Args грубо — вызывающий ставит флаги.
+	for i, a := range os.Args {
+		if a == "--"+name && i+1 < len(os.Args) {
+			return os.Args[i+1]
+		}
+		if strings.HasPrefix(a, "--"+name+"=") {
+			return strings.TrimPrefix(a, "--"+name+"=")
+		}
+	}
+	fmt.Fprint(os.Stderr, label+": ")
+	var v string
+	_, _ = fmt.Scanln(&v)
+	return v
+}
+
+func saveTokens(cfg clientcfg.Config, resp *pb.TokenResponse, addr string, inscFlag bool) error {
+	if addr != "" {
+		cfg.Address = addr
+	}
+	if inscFlag {
+		cfg.Insecure = true
+	}
+	cfg.Token = resp.GetAccessToken()
+	if err := cfg.Save(); err != nil {
+		return err
+	}
+	fmt.Println("ok")
+	return nil
+}
+
+func withAuthClient(addr string, inscFlag, needToken bool, fn func(context.Context, pb.AuthServiceClient, clientcfg.Config) error) error {
+	cfg, conn, ctx, cancel, err := dial(addr, inscFlag, needToken)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer conn.Close()
+	return fn(ctx, pb.NewAuthServiceClient(conn), cfg)
+}
+
+func withVault(addr string, inscFlag bool, fn func(context.Context, pb.VaultServiceClient) error) error {
+	_, conn, ctx, cancel, err := dial(addr, inscFlag, true)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer conn.Close()
+	return fn(ctx, pb.NewVaultServiceClient(conn))
+}
+
+func dial(addr string, inscFlag, needToken bool) (clientcfg.Config, *grpc.ClientConn, context.Context, context.CancelFunc, error) {
+	cfg, err := clientcfg.Load()
+	if err != nil {
+		return cfg, nil, nil, nil, err
+	}
+	if addr != "" {
+		cfg.Address = addr
+	}
+	if inscFlag {
+		cfg.Insecure = true
+	}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if !cfg.Insecure {
+		opts = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12}))}
+	}
+	conn, err := grpc.NewClient(cfg.Address, opts...)
+	if err != nil {
+		return cfg, nil, nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	if needToken {
+		if cfg.Token == "" {
+			cancel()
+			_ = conn.Close()
+			return cfg, nil, nil, nil, fmt.Errorf("сначала выполните gophkeeper login")
+		}
+		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+cfg.Token)
+	}
+	return cfg, conn, ctx, cancel, nil
+}
+
+func printJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}

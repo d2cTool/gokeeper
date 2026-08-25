@@ -1,0 +1,43 @@
+package templates
+
+import "gokeeper/internal/download"
+import "gokeeper/pkg/version"
+import "strconv"
+
+templ DownloadsPage(p Page, bins []download.Binary) {
+	@Layout(p) {
+		<h1>CLI-клиент</h1>
+		<p class="muted">
+			gRPC-клиент для Windows, Linux и macOS. Версия сервера: { version.String() }.
+		</p>
+		<div class="cards">
+			for _, b := range bins {
+				<div class="card">
+					<h3>{ download.DisplayName(b.Platform) }</h3>
+					<p class="muted">{ b.Filename }</p>
+					if b.Available {
+						<p class="muted">{ b.Version } · { formatSize(b.Size) }</p>
+						<a class="btn" href={ b.URL }>Скачать</a>
+					} else {
+						<p class="muted">Бинарник ещё не собран. Выполните <code>make clients</code> или <code>scripts/build-clients.ps1</code>.</p>
+					}
+				</div>
+			}
+		</div>
+		<div class="panel" style="margin-top:24px">
+			<h3>WebAPI</h3>
+			<p class="muted">Список: <code>GET /api/v1/client</code></p>
+			<p class="muted">Файл: <code>GET /api/v1/client/windows|linux|darwin</code></p>
+		</div>
+	}
+}
+
+func formatSize(n int64) string {
+	if n <= 0 {
+		return ""
+	}
+	if n < 1024 {
+		return strconv.FormatInt(n, 10) + " B"
+	}
+	return strconv.FormatInt(n/1024, 10) + " KB"
+}

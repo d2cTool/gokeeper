@@ -1,0 +1,46 @@
+package templates
+
+templ LoginPage(p Page, errMsg string) {
+	@Layout(p) {
+		<div class="panel auth-box">
+			<h1>Вход</h1>
+			<p class="muted">Сессия сохранится в HttpOnly cookie (JWT).</p>
+			if errMsg != "" {
+				<p class="error">{ errMsg }</p>
+			}
+			<form class="stack" method="post" action="/login">
+				<input type="hidden" name="csrf" value={ p.CSRF }/>
+				<label>Логин
+					<input name="login" required autocomplete="username"/>
+				</label>
+				<label>Пароль
+					<input name="password" type="password" required autocomplete="current-password"/>
+				</label>
+				<button type="submit">Войти</button>
+			</form>
+			<p class="muted">Нет аккаунта? <a href="/register">Регистрация</a></p>
+		</div>
+	}
+}
+
+templ RegisterPage(p Page, errMsg string) {
+	@Layout(p) {
+		<div class="panel auth-box">
+			<h1>Регистрация</h1>
+			<p class="muted">Пароль не короче 8 символов. Им же шифруется сейф.</p>
+			if errMsg != "" {
+				<p class="error">{ errMsg }</p>
+			}
+			<form class="stack" method="post" action="/register">
+				<input type="hidden" name="csrf" value={ p.CSRF }/>
+				<label>Логин
+					<input name="login" required autocomplete="username"/>
+				</label>
+				<label>Пароль
+					<input name="password" type="password" required minlength="8" autocomplete="new-password"/>
+				</label>
+				<button type="submit">Создать аккаунт</button>
+			</form>
+		</div>
+	}
+}
