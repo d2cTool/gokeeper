@@ -25,6 +25,7 @@ type Config struct {
 
 // Load читает конфигурацию из окружения.
 // В режиме разработки (APP_ENV != prod) недостающие ключи создаются в data/.
+// TLS-сертификат: TLS_CERT_FILE/TLS_KEY_FILE или самоподписанная пара в data/.
 func Load() (Config, error) {
 	dev := !strings.EqualFold(os.Getenv("APP_ENV"), "prod")
 	dataDir := envOr("DATA_DIR", "data")
@@ -41,9 +42,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	tlsCert := os.Getenv("TLS_CERT_FILE")
-	tlsKey := os.Getenv("TLS_KEY_FILE")
-	secure := !dev || (tlsCert != "" && tlsKey != "")
+	tlsCert, tlsKey, err := loadTLSFiles(dataDir)
+	if err != nil {
+		return Config{}, err
+	}
 
 	return Config{
 		HTTPAddr:     envOr("HTTP_ADDR", ":8080"),
@@ -54,7 +56,7 @@ func Load() (Config, error) {
 		ClientBinDir: envOr("CLIENT_BINARIES_DIR", filepath.Join("bin", "clients")),
 		TLSCertFile:  tlsCert,
 		TLSKeyFile:   tlsKey,
-		CookieSecure: secure,
+		CookieSecure: true,
 		Dev:          dev,
 	}, nil
 }

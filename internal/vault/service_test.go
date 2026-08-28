@@ -3,6 +3,7 @@ package vault_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -107,8 +108,8 @@ func TestTitle(t *testing.T) {
 }
 
 func TestParseType(t *testing.T) {
-	if _, err := vault.ParseType("nope"); err == nil {
-		t.Fatal("expected error")
+	if _, err := vault.ParseType("nope"); !errors.Is(err, vault.ErrInvalidItem) {
+		t.Fatalf("err=%v", err)
 	}
 	if _, err := vault.ParseType("login"); err != nil {
 		t.Fatal(err)

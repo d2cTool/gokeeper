@@ -118,7 +118,7 @@ func (s *Server) List(ctx context.Context, req *pb.ListRequest) (*pb.ListRespons
 	}
 	items, err := s.Vault.List(ctx, p.UserID, p.KEK, req.GetType())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, mapVaultErr(err)
 	}
 	out := make([]*pb.Item, 0, len(items))
 	for _, it := range items {

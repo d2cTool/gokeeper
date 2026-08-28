@@ -14,6 +14,8 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"gokeeper/internal/cryptox"
 )
@@ -152,15 +154,14 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (Tokens, err
 	if err != nil {
 		return Tokens{}, fmt.Errorf("select session: %w", err)
 	}
-	kek, err := cryptox.Open(s.masterKey, wrapped)
-	if err != nil {
+	if _, err := cryptox.Open(s.masterKey, wrapped); err != nil {
 		return Tokens{}, fmt.Errorf("unwrap kek: %w", err)
 	}
 
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE token_hash = ?`, sum); err != nil {
 		return Tokens{}, err
 	}
-	return s.issueTokens(ctx, userID, sessionID, kek)
+	return s.issueTokens(ctx, userID, sessionID)
 }
 
 // Authenticate проверяет access JWT и достаёт KEK из сессии.
@@ -208,22 +209,28 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Princip
 }
 
 func (s *Service) openSession(ctx context.Context, userID string, kek []byte) (Tokens, error) {
+	now := time.Now().Unix()
+	if _, err := s.db.ExecContext(ctx,
+		`DELETE FROM sessions WHERE user_id = ? AND expires_at < ?`, userID, now,
+	); err != nil {
+		return Tokens{}, fmt.Errorf("purge sessions: %w", err)
+	}
 	wrapped, err := cryptox.Seal(s.masterKey, kek)
 	if err != nil {
 		return Tokens{}, err
 	}
 	sessionID := uuid.NewString()
-	exp := time.Now().Add(refreshTTL).Unix()
+	exp := now + int64(refreshTTL.Seconds())
 	if _, err := s.db.ExecContext(ctx,
 		`INSERT INTO sessions (id, user_id, wrapped_kek, expires_at) VALUES (?, ?, ?, ?)`,
 		sessionID, userID, wrapped, exp,
 	); err != nil {
 		return Tokens{}, fmt.Errorf("insert session: %w", err)
 	}
-	return s.issueTokens(ctx, userID, sessionID, kek)
+	return s.issueTokens(ctx, userID, sessionID)
 }
 
-func (s *Service) issueTokens(ctx context.Context, userID, sessionID string, kek []byte) (Tokens, error) {
+func (s *Service) issueTokens(ctx context.Context, userID, sessionID string) (Tokens, error) {
 	var login string
 	if err := s.db.QueryRowContext(ctx, `SELECT login FROM users WHERE id = ?`, userID).Scan(&login); err != nil {
 		return Tokens{}, fmt.Errorf("select login: %w", err)
@@ -253,7 +260,6 @@ func (s *Service) issueTokens(ctx context.Context, userID, sessionID string, kek
 		return Tokens{}, fmt.Errorf("insert refresh: %w", err)
 	}
 
-	_ = kek
 	return Tokens{
 		AccessToken:  accessStr,
 		RefreshToken: refreshRaw,
@@ -275,8 +281,8 @@ func randomToken(n int) (string, error) {
 }
 
 func isUnique(err error) bool {
-	return err != nil && (strings.Contains(strings.ToLower(err.Error()), "unique") ||
-		strings.Contains(err.Error(), "CONSTRAINT"))
+	var se *sqlite.Error
+	return errors.As(err, &se) && se.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE
 }
 
 // AccessTTL возвращает TTL access-токена — для тестов и cookie MaxAge.

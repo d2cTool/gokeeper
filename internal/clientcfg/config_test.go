@@ -34,7 +34,7 @@ func TestSaveLoad(t *testing.T) {
 func TestLoadMissingUsesDefaults(t *testing.T) {
 	t.Setenv("GOPHKEEPER_CONFIG", filepath.Join(t.TempDir(), "missing", "cfg.json"))
 	cfg, err := clientcfg.Load()
-	if err != nil || cfg.Address != "localhost:9090" || !cfg.Insecure {
+	if err != nil || cfg.Address != "localhost:9090" || cfg.Insecure {
 		t.Fatalf("%+v %v", cfg, err)
 	}
 }

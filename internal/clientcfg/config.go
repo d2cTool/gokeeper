@@ -20,7 +20,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	cfg := Config{Address: "localhost:9090", Insecure: true, Path: path}
+	cfg := Config{Address: "localhost:9090", Insecure: false, Path: path}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {

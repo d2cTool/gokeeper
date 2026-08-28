@@ -20,7 +20,7 @@ func ParseType(s string) (Type, error) {
 	case TypeLogin, TypeText, TypeBinary, TypeCard:
 		return t, nil
 	default:
-		return "", fmt.Errorf("unknown item type %q", s)
+		return "", fmt.Errorf("%w: unknown item type %q", ErrInvalidItem, s)
 	}
 }
 

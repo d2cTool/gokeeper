@@ -164,10 +164,13 @@ func getCmd(addr *string, insc *bool) *cobra.Command {
 func addCmd(addr *string, insc *bool) *cobra.Command {
 	cmd := &cobra.Command{Use: "add", Short: "Добавить запись"}
 	var meta string
-	login := &cobra.Command{Use: "login", Short: "Логин/пароль", RunE: func(_ *cobra.Command, _ []string) error {
-		url := flagOrPrompt("url", "URL")
-		user := flagOrPrompt("username", "Логин")
-		pass := flagOrPrompt("password", "Пароль")
+	login := &cobra.Command{Use: "login", Short: "Логин/пароль", RunE: func(cmd *cobra.Command, _ []string) error {
+		url := flagOrPrompt(cmd, "url", "URL")
+		user := flagOrPrompt(cmd, "username", "Логин")
+		pass, err := flagOrPromptSecret(cmd, "password", "Пароль")
+		if err != nil {
+			return err
+		}
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
 			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "login", Metadata: meta,
@@ -184,9 +187,9 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 	login.Flags().String("username", "", "")
 	login.Flags().String("password", "", "")
 
-	text := &cobra.Command{Use: "text", Short: "Текст", RunE: func(_ *cobra.Command, _ []string) error {
-		title := flagOrPrompt("title", "Заголовок")
-		body := flagOrPrompt("body", "Текст")
+	text := &cobra.Command{Use: "text", Short: "Текст", RunE: func(cmd *cobra.Command, _ []string) error {
+		title := flagOrPrompt(cmd, "title", "Заголовок")
+		body := flagOrPrompt(cmd, "body", "Текст")
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
 			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "text", Metadata: meta,
@@ -202,16 +205,16 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 	text.Flags().String("title", "", "")
 	text.Flags().String("body", "", "")
 
-	card := &cobra.Command{Use: "card", Short: "Банковская карта", RunE: func(_ *cobra.Command, _ []string) error {
+	card := &cobra.Command{Use: "card", Short: "Банковская карта", RunE: func(cmd *cobra.Command, _ []string) error {
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
 			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "card", Metadata: meta,
 				Card: pb.CardPayload_builder{
-					Holder:   flagOrPrompt("holder", "Держатель"),
-					Number:   flagOrPrompt("number", "Номер"),
-					ExpMonth: flagOrPrompt("exp-month", "Месяц"),
-					ExpYear:  flagOrPrompt("exp-year", "Год"),
-					Cvv:      flagOrPrompt("cvv", "CVV"),
+					Holder:   flagOrPrompt(cmd, "holder", "Держатель"),
+					Number:   flagOrPrompt(cmd, "number", "Номер"),
+					ExpMonth: flagOrPrompt(cmd, "exp-month", "Месяц"),
+					ExpYear:  flagOrPrompt(cmd, "exp-year", "Год"),
+					Cvv:      flagOrPrompt(cmd, "cvv", "CVV"),
 				}.Build(),
 			}.Build())
 			if err != nil {
@@ -362,29 +365,38 @@ func credentialsFromArgs(args []string) (string, string, error) {
 	return strings.TrimSpace(login), pass, nil
 }
 
-func flagOrPrompt(name, label string) string {
-	// значения читаются из текущего cobra-команды через os.Args грубо — вызывающий ставит флаги.
-	for i, a := range os.Args {
-		if a == "--"+name && i+1 < len(os.Args) {
-			return os.Args[i+1]
-		}
-		if strings.HasPrefix(a, "--"+name+"=") {
-			return strings.TrimPrefix(a, "--"+name+"=")
-		}
+func flagOrPrompt(cmd *cobra.Command, name, label string) string {
+	v, _ := readFlagOrPrompt(cmd, name, label, false)
+	return v
+}
+
+func flagOrPromptSecret(cmd *cobra.Command, name, label string) (string, error) {
+	return readFlagOrPrompt(cmd, name, label, true)
+}
+
+func readFlagOrPrompt(cmd *cobra.Command, name, label string, secret bool) (string, error) {
+	if v, err := cmd.Flags().GetString(name); err == nil && v != "" {
+		return v, nil
 	}
 	fmt.Fprint(os.Stderr, label+": ")
+	if secret {
+		b, err := term.ReadPassword(int(syscall.Stdin))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
 	var v string
 	_, _ = fmt.Scanln(&v)
-	return v
+	return v, nil
 }
 
 func saveTokens(cfg clientcfg.Config, resp *pb.TokenResponse, addr string, inscFlag bool) error {
 	if addr != "" {
 		cfg.Address = addr
 	}
-	if inscFlag {
-		cfg.Insecure = true
-	}
+	cfg.Insecure = inscFlag
 	cfg.Token = resp.GetAccessToken()
 	if err := cfg.Save(); err != nil {
 		return err
@@ -424,10 +436,14 @@ func dial(addr string, inscFlag, needToken bool) (clientcfg.Config, *grpc.Client
 	if inscFlag {
 		cfg.Insecure = true
 	}
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	if !cfg.Insecure {
-		opts = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12}))}
+	creds := credentials.NewTLS(&tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true, // самоподписанный сертификат сервера
+	})
+	if cfg.Insecure {
+		creds = insecure.NewCredentials()
 	}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 	conn, err := grpc.NewClient(cfg.Address, opts...)
 	if err != nil {
 		return cfg, nil, nil, nil, err

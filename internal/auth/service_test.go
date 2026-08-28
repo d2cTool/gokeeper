@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 	"gokeeper/internal/storage/sqlite"
 )
 
-func setupAuth(t *testing.T) *auth.Service {
+func setupAuthDB(t *testing.T) (*auth.Service, *sql.DB) {
 	t.Helper()
 	db, err := sqlite.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
@@ -19,7 +20,12 @@ func setupAuth(t *testing.T) *auth.Service {
 	t.Cleanup(func() { _ = sqlite.Close(db) })
 	master, _ := cryptox.NewSalt(32)
 	jwt, _ := cryptox.NewSalt(32)
-	return auth.NewService(db, jwt, master)
+	return auth.NewService(db, jwt, master), db
+}
+
+func setupAuth(t *testing.T) *auth.Service {
+	s, _ := setupAuthDB(t)
+	return s
 }
 
 func TestRegisterLoginAndAuth(t *testing.T) {
@@ -103,4 +109,44 @@ func TestRefreshAndLogout(t *testing.T) {
 	if _, err := s.Authenticate(ctx, next.AccessToken); err != auth.ErrSessionExpired {
 		t.Fatalf("err=%v", err)
 	}
+}
+
+func TestOpenSessionPurgesExpired(t *testing.T) {
+	s, db := setupAuthDB(t)
+	ctx := context.Background()
+	first, err := s.Register(ctx, "dave", "supersecret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.Authenticate(ctx, first.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Login(ctx, "dave", "supersecret"); err != nil {
+		t.Fatal(err)
+	}
+	if n := countSessions(t, db, p.UserID); n != 2 {
+		t.Fatalf("live sessions=%d", n)
+	}
+	if _, err := db.Exec(`UPDATE sessions SET expires_at = 1 WHERE id = ?`, p.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Login(ctx, "dave", "supersecret"); err != nil {
+		t.Fatal(err)
+	}
+	if n := countSessions(t, db, p.UserID); n != 2 {
+		t.Fatalf("after purge sessions=%d", n)
+	}
+	if _, err := s.Authenticate(ctx, first.AccessToken); err != auth.ErrSessionExpired {
+		t.Fatalf("expired session kept: %v", err)
+	}
+}
+
+func countSessions(t *testing.T, db *sql.DB, userID string) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE user_id = ?`, userID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
 }

@@ -200,7 +200,7 @@ func (d Deps) getVault(w http.ResponseWriter, r *http.Request) {
 	typ := r.URL.Query().Get("type")
 	items, err := d.Vault.List(r.Context(), p.UserID, p.KEK, typ)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeWebError(w, err)
 		return
 	}
 	templates.VaultList(d.page(w, r, "Сейф"), items, typ).Render(r.Context(), w)
@@ -214,7 +214,7 @@ func (d Deps) getVaultItem(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	it, err := d.Vault.Get(r.Context(), p.UserID, p.KEK, chi.URLParam(r, "id"))
 	if err != nil {
-		http.NotFound(w, r)
+		writeWebError(w, err)
 		return
 	}
 	show := r.URL.Query().Get("reveal") == "1"
@@ -225,7 +225,7 @@ func (d Deps) getVaultEdit(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	it, err := d.Vault.Get(r.Context(), p.UserID, p.KEK, chi.URLParam(r, "id"))
 	if err != nil {
-		http.NotFound(w, r)
+		writeWebError(w, err)
 		return
 	}
 	templates.VaultForm(d.page(w, r, "Редактирование"), it, false, "").Render(r.Context(), w)
@@ -234,7 +234,11 @@ func (d Deps) getVaultEdit(w http.ResponseWriter, r *http.Request) {
 func (d Deps) getVaultFile(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	it, err := d.Vault.GetBinary(r.Context(), p.UserID, p.KEK, chi.URLParam(r, "id"))
-	if err != nil || it.Binary == nil {
+	if err != nil {
+		writeWebError(w, err)
+		return
+	}
+	if it.Binary == nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -252,6 +256,10 @@ func (d Deps) postVaultCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := d.Vault.Create(r.Context(), p.UserID, p.KEK, it)
 	if err != nil {
+		if vaultStatus(err) >= 500 {
+			writeWebError(w, err)
+			return
+		}
 		templates.VaultForm(d.page(w, r, "Новая запись"), it, true, humanVaultErr(err)).Render(r.Context(), w)
 		return
 	}
@@ -263,7 +271,7 @@ func (d Deps) postVaultUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cur, err := d.Vault.Get(r.Context(), p.UserID, p.KEK, id)
 	if err != nil {
-		http.NotFound(w, r)
+		writeWebError(w, err)
 		return
 	}
 	it, err := itemFromForm(r, cur, false)
@@ -273,6 +281,10 @@ func (d Deps) postVaultUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	it.ID = id
 	if _, err := d.Vault.Update(r.Context(), p.UserID, p.KEK, it); err != nil {
+		if vaultStatus(err) >= 500 {
+			writeWebError(w, err)
+			return
+		}
 		templates.VaultForm(d.page(w, r, "Редактирование"), it, false, humanVaultErr(err)).Render(r.Context(), w)
 		return
 	}
@@ -281,7 +293,10 @@ func (d Deps) postVaultUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (d Deps) postVaultDelete(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
-	_ = d.Vault.Delete(r.Context(), p.UserID, chi.URLParam(r, "id"), "web")
+	if err := d.Vault.Delete(r.Context(), p.UserID, chi.URLParam(r, "id"), "web"); err != nil {
+		writeWebError(w, err)
+		return
+	}
 	setFlash(w, d.Cfg, "Запись удалена")
 	http.Redirect(w, r, "/vault", http.StatusSeeOther)
 }
@@ -342,7 +357,7 @@ func humanAuthErr(err error) string {
 	case errors.Is(err, auth.ErrEmptyLogin):
 		return "укажите логин"
 	default:
-		return err.Error()
+		return "внутренняя ошибка сервера"
 	}
 }
 
@@ -352,9 +367,65 @@ func humanVaultErr(err error) string {
 		return "заполните обязательные поля"
 	case errors.Is(err, vault.ErrTooLarge):
 		return "файл больше 8 МБ"
+	case errors.Is(err, vault.ErrNotFound):
+		return "запись не найдена"
 	default:
-		return err.Error()
+		return "внутренняя ошибка сервера"
 	}
+}
+
+func vaultStatus(err error) int {
+	switch {
+	case errors.Is(err, vault.ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, vault.ErrInvalidItem), errors.Is(err, vault.ErrTooLarge):
+		return http.StatusBadRequest
+	case errors.Is(err, vault.ErrConflict):
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func authStatus(err error) int {
+	switch {
+	case errors.Is(err, auth.ErrInvalidCredentials), errors.Is(err, auth.ErrInvalidToken), errors.Is(err, auth.ErrSessionExpired):
+		return http.StatusUnauthorized
+	case errors.Is(err, auth.ErrLoginTaken), errors.Is(err, auth.ErrWeakPassword), errors.Is(err, auth.ErrEmptyLogin):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func writeWebError(w http.ResponseWriter, err error) {
+	code := vaultStatus(err)
+	msg := err.Error()
+	if code >= 500 {
+		msg = http.StatusText(code)
+	}
+	http.Error(w, msg, code)
+}
+
+func writeVaultErr(w http.ResponseWriter, err error) {
+	code := vaultStatus(err)
+	msg := humanVaultErr(err)
+	if errors.Is(err, vault.ErrNotFound) {
+		msg = "not found"
+	}
+	if code >= 500 {
+		msg = "internal error"
+	}
+	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+func writeAuthErr(w http.ResponseWriter, err error) {
+	code := authStatus(err)
+	msg := humanAuthErr(err)
+	if code >= 500 {
+		msg = "internal error"
+	}
+	writeJSON(w, code, map[string]string{"error": msg})
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -404,7 +475,7 @@ func (d Deps) apiRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	tokens, err := d.Auth.Register(r.Context(), body.Login, body.Password)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": humanAuthErr(err)})
+		writeAuthErr(w, err)
 		return
 	}
 	setAuthCookies(w, d.Cfg, tokens)
@@ -419,7 +490,7 @@ func (d Deps) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	tokens, err := d.Auth.Login(r.Context(), body.Login, body.Password)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": humanAuthErr(err)})
+		writeAuthErr(w, err)
 		return
 	}
 	setAuthCookies(w, d.Cfg, tokens)
@@ -457,7 +528,7 @@ func (d Deps) apiListItems(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	items, err := d.Vault.List(r.Context(), p.UserID, p.KEK, r.URL.Query().Get("type"))
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeVaultErr(w, err)
 		return
 	}
 	if items == nil {
@@ -470,7 +541,7 @@ func (d Deps) apiGetItem(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	it, err := d.Vault.GetBinary(r.Context(), p.UserID, p.KEK, chi.URLParam(r, "id"))
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		writeVaultErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, it)
@@ -485,7 +556,7 @@ func (d Deps) apiCreateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := d.Vault.Create(r.Context(), p.UserID, p.KEK, it)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": humanVaultErr(err)})
+		writeVaultErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, created)
@@ -501,11 +572,7 @@ func (d Deps) apiUpdateItem(w http.ResponseWriter, r *http.Request) {
 	it.ID = chi.URLParam(r, "id")
 	updated, err := d.Vault.Update(r.Context(), p.UserID, p.KEK, it)
 	if err != nil {
-		code := http.StatusBadRequest
-		if errors.Is(err, vault.ErrNotFound) {
-			code = http.StatusNotFound
-		}
-		writeJSON(w, code, map[string]string{"error": humanVaultErr(err)})
+		writeVaultErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)
@@ -514,7 +581,7 @@ func (d Deps) apiUpdateItem(w http.ResponseWriter, r *http.Request) {
 func (d Deps) apiDeleteItem(w http.ResponseWriter, r *http.Request) {
 	p, _ := requestPrincipal(r)
 	if err := d.Vault.Delete(r.Context(), p.UserID, chi.URLParam(r, "id"), "api"); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		writeVaultErr(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -532,7 +599,7 @@ func (d Deps) apiSync(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := d.Vault.Sync(r.Context(), p.UserID, p.KEK, body.SinceVersion, body.Items, "api")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeVaultErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)

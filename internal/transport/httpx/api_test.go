@@ -102,6 +102,147 @@ func TestRegisterLoginCookieAndItems(t *testing.T) {
 	}
 }
 
+func TestAPIVaultErrorStatus(t *testing.T) {
+	h := setupHTTP(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"login":"erru","password":"supersecret"}`))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	var tokens auth.Tokens
+	if err := json.Unmarshal(rec.Body.Bytes(), &tokens); err != nil {
+		t.Fatal(err)
+	}
+	authz := "Bearer " + tokens.AccessToken
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/items?type=nope", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad type list %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/items", bytes.NewBufferString(`{"type":"login"}`))
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid create %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/items/missing-id", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("get missing %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/items/missing-id", bytes.NewBufferString(`{"type":"login","login":{"username":"u","password":"p"}}`))
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("put missing %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/items/missing-id", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("del missing %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/sync", bytes.NewBufferString(`{"items":[{"id":"x","type":"login"}]}`))
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("sync invalid %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/vault?type=nope", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("web list bad type %d %s", rec.Code, rec.Body.Bytes())
+	}
+}
+
+func TestAPIMapsInternalErrors(t *testing.T) {
+	dir := t.TempDir()
+	db, err := sqlite.Open(filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlite.Close(db) })
+	master, _ := cryptox.NewSalt(32)
+	jwt, _ := cryptox.NewSalt(32)
+	h := httpx.NewRouter(httpx.Deps{
+		Cfg:      config.Config{CookieSecure: false, JWTSecret: jwt, MasterKey: master},
+		Auth:     auth.NewService(db, jwt, master),
+		Vault:    vault.NewService(db),
+		Download: download.Catalog{Dir: dir},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"login":"dbu","password":"supersecret"}`))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("register %d %s", rec.Code, rec.Body.Bytes())
+	}
+	var tokens auth.Tokens
+	if err := json.Unmarshal(rec.Body.Bytes(), &tokens); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("DROP TABLE items"); err != nil {
+		t.Fatal(err)
+	}
+
+	authz := "Bearer " + tokens.AccessToken
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/items", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("list broken db %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/items", bytes.NewBufferString(`{"type":"login","login":{"username":"u","password":"p"}}`))
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("create broken db %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/sync", bytes.NewBufferString(`{"since_version":0,"items":[]}`))
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("sync broken db %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/vault", nil)
+	req.Header.Set("Authorization", authz)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("web list broken db %d %s", rec.Code, rec.Body.Bytes())
+	}
+
+	if err := sqlite.Close(db); err != nil {
+		t.Fatal(err)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"login":"dbu","password":"supersecret"}`))
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("login closed db %d %s", rec.Code, rec.Body.Bytes())
+	}
+}
+
 func TestUnauthorizedAPI(t *testing.T) {
 	h := setupHTTP(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/items", nil)
