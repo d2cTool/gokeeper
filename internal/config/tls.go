@@ -52,9 +52,10 @@ func writeSelfSigned(certPath, keyPath string) error {
 		Subject:               pkix.Name{Organization: []string{"GophKeeper"}, CommonName: "localhost"},
 		NotBefore:             now.Add(-time.Hour),
 		NotAfter:              now.Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:              x509.KeyUsageDigitalSignature,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
+		IsCA:                  true,
 		DNSNames:              []string{"localhost"},
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
 	}

@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,6 +22,9 @@ import (
 	"gokeeper/pkg/version"
 )
 
+// tlsCertFlag задаётся persistent-флагом --tls-cert в rootCmd.
+var tlsCertFlag *string
+
 func main() {
 	if err := rootCmd().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -34,6 +36,7 @@ func rootCmd() *cobra.Command {
 	var (
 		addr     string
 		insecure bool
+		tlsCert  string
 	)
 	cmd := &cobra.Command{
 		Use:   "gophkeeper",
@@ -41,6 +44,8 @@ func rootCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVar(&addr, "addr", "", "хост:порт gRPC (по умолчанию из конфига)")
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "без TLS")
+	cmd.PersistentFlags().StringVar(&tlsCert, "tls-cert", "", "публичный сертификат сервера (tls.crt)")
+	tlsCertFlag = &tlsCert
 	cmd.AddCommand(
 		versionCmd(),
 		registerCmd(&addr, &insecure),
@@ -206,15 +211,23 @@ func addCmd(addr *string, insc *bool) *cobra.Command {
 	text.Flags().String("body", "", "")
 
 	card := &cobra.Command{Use: "card", Short: "Банковская карта", RunE: func(cmd *cobra.Command, _ []string) error {
+		holder := flagOrPrompt(cmd, "holder", "Держатель")
+		number := flagOrPrompt(cmd, "number", "Номер")
+		expMonth := flagOrPrompt(cmd, "exp-month", "Месяц")
+		expYear := flagOrPrompt(cmd, "exp-year", "Год")
+		cvv, err := flagOrPromptSecret(cmd, "cvv", "CVV")
+		if err != nil {
+			return err
+		}
 		return withVault(*addr, *insc, func(ctx context.Context, c pb.VaultServiceClient) error {
 			it, err := c.Create(ctx, pb.UpsertRequest_builder{
 				Type: "card", Metadata: meta,
 				Card: pb.CardPayload_builder{
-					Holder:   flagOrPrompt(cmd, "holder", "Держатель"),
-					Number:   flagOrPrompt(cmd, "number", "Номер"),
-					ExpMonth: flagOrPrompt(cmd, "exp-month", "Месяц"),
-					ExpYear:  flagOrPrompt(cmd, "exp-year", "Год"),
-					Cvv:      flagOrPrompt(cmd, "cvv", "CVV"),
+					Holder:   holder,
+					Number:   number,
+					ExpMonth: expMonth,
+					ExpYear:  expYear,
+					Cvv:      cvv,
 				}.Build(),
 			}.Build())
 			if err != nil {
@@ -436,12 +449,19 @@ func dial(addr string, inscFlag, needToken bool) (clientcfg.Config, *grpc.Client
 	if inscFlag {
 		cfg.Insecure = true
 	}
-	creds := credentials.NewTLS(&tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: true, // самоподписанный сертификат сервера
-	})
+	var creds credentials.TransportCredentials
 	if cfg.Insecure {
 		creds = insecure.NewCredentials()
+	} else {
+		explicit := ""
+		if tlsCertFlag != nil {
+			explicit = *tlsCertFlag
+		}
+		tlsCfg, err := loadVerifiedTLS(cfg, explicit)
+		if err != nil {
+			return cfg, nil, nil, nil, err
+		}
+		creds = credentials.NewTLS(tlsCfg)
 	}
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 	conn, err := grpc.NewClient(cfg.Address, opts...)

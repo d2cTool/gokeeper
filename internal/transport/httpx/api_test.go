@@ -2,6 +2,7 @@ package httpx_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +21,12 @@ import (
 
 func setupHTTP(t *testing.T) http.Handler {
 	t.Helper()
+	h, _ := setupHTTPWithDB(t)
+	return h
+}
+
+func setupHTTPWithDB(t *testing.T) (http.Handler, *sql.DB) {
+	t.Helper()
 	dir := t.TempDir()
 	db, err := sqlite.Open(filepath.Join(dir, "t.db"))
 	if err != nil {
@@ -31,12 +38,13 @@ func setupHTTP(t *testing.T) http.Handler {
 	binDir := filepath.Join(dir, "clients")
 	_ = os.MkdirAll(binDir, 0o755)
 	_ = os.WriteFile(filepath.Join(binDir, "gophkeeper-linux-amd64"), []byte("elf"), 0o644)
-	return httpx.NewRouter(httpx.Deps{
+	h := httpx.NewRouter(httpx.Deps{
 		Cfg:      config.Config{CookieSecure: false, ClientBinDir: binDir, JWTSecret: jwt, MasterKey: master},
 		Auth:     auth.NewService(db, jwt, master),
 		Vault:    vault.NewService(db),
 		Download: download.Catalog{Dir: binDir},
 	})
+	return h, db
 }
 
 func TestClientDownloadAPI(t *testing.T) {
