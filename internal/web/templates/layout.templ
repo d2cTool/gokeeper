@@ -1,0 +1,49 @@
+package templates
+
+// Page — общие поля шапки HTML-страницы.
+type Page struct {
+	Title string
+	Login string
+	CSRF  string
+	Flash string
+}
+
+templ Layout(p Page) {
+	<!doctype html>
+	<html lang="ru">
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<title>{ p.Title } — GophKeeper</title>
+		<link rel="stylesheet" href="/static/style.css"/>
+	</head>
+	<body>
+		<header class="nav">
+			<div class="wrap">
+				<a class="brand" href="/">Goph<span>Keeper</span></a>
+				<nav>
+					<a href="/downloads">Клиент</a>
+					<a href="/swagger/index.html">API</a>
+					if p.Login != "" {
+						<a href="/vault">Сейф</a>
+						<span class="muted">{ p.Login }</span>
+						<form method="post" action="/logout" style="display:inline">
+							<input type="hidden" name="csrf" value={ p.CSRF }/>
+							<button class="secondary" type="submit">Выйти</button>
+						</form>
+					} else {
+						<a href="/login">Вход</a>
+						<a href="/register">Регистрация</a>
+					}
+				</nav>
+			</div>
+		</header>
+		<div class="wrap">
+			if p.Flash != "" {
+				<div class="flash">{ p.Flash }</div>
+			}
+			{ children... }
+		</div>
+	</body>
+	</html>
+}

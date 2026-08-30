@@ -1,0 +1,129 @@
+package templates
+
+import "gokeeper/internal/vault"
+import "strconv"
+
+templ VaultList(p Page, items []vault.Item, typ string) {
+	@Layout(p) {
+		<div class="row">
+			<h1>Сейф</h1>
+			<a class="btn" href="/vault/new">Добавить</a>
+		</div>
+		<div class="tabs">
+			<a href="/vault" class={ tabClass(typ == "") }>Все</a>
+			<a href="/vault?type=login" class={ tabClass(typ == "login") }>Логины</a>
+			<a href="/vault?type=text" class={ tabClass(typ == "text") }>Текст</a>
+			<a href="/vault?type=card" class={ tabClass(typ == "card") }>Карты</a>
+			<a href="/vault?type=binary" class={ tabClass(typ == "binary") }>Файлы</a>
+		</div>
+		if len(items) == 0 {
+			<p class="muted">Записей нет. Добавьте первую или скачайте CLI.</p>
+		} else {
+			<table>
+				<thead>
+					<tr><th>Тип</th><th>Название</th><th>Версия</th></tr>
+				</thead>
+				<tbody>
+					for _, it := range items {
+						<tr>
+							<td><span class="badge">{ string(it.Type) }</span></td>
+							<td><a href={ "/vault/" + it.ID }>{ it.Title() }</a></td>
+							<td class="muted">{ strconv.FormatInt(it.Version, 10) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	}
+}
+
+func tabClass(active bool) string {
+	if active {
+		return "active"
+	}
+	return ""
+}
+
+templ VaultView(p Page, it vault.Item, show bool) {
+	@Layout(p) {
+		<div class="row">
+			<h1>{ it.Title() }</h1>
+			<a class="btn secondary" href={ "/vault/" + it.ID + "/edit" }>Изменить</a>
+		</div>
+		<p><span class="badge">{ string(it.Type) }</span></p>
+		<div class="panel">
+			<dl>
+				<dt>Метаданные</dt>
+				<dd>
+					if it.Metadata == "" {
+						—
+					} else {
+						{ it.Metadata }
+					}
+				</dd>
+				switch it.Type {
+				case vault.TypeLogin:
+					if it.Login != nil {
+						<dt>URL</dt><dd>{ it.Login.URL }</dd>
+						<dt>Логин</dt><dd>{ it.Login.Username }</dd>
+						<dt>Пароль</dt>
+						<dd class="secret">
+							if show {
+								{ it.Login.Password }
+							} else {
+								••••••••
+							}
+						</dd>
+					}
+				case vault.TypeText:
+					if it.Text != nil {
+						<dt>Заголовок</dt><dd>{ it.Text.Title }</dd>
+						<dt>Текст</dt><dd>{ it.Text.Body }</dd>
+					}
+				case vault.TypeCard:
+					if it.Card != nil {
+						<dt>Держатель</dt><dd>{ it.Card.Holder }</dd>
+						<dt>Номер</dt>
+						<dd class="secret">
+							if show {
+								{ it.Card.Number }
+							} else {
+								{ maskCard(it.Card.Number) }
+							}
+						</dd>
+						<dt>Срок</dt><dd>{ it.Card.ExpMonth }/{ it.Card.ExpYear }</dd>
+						<dt>CVV</dt>
+						<dd class="secret">
+							if show {
+								{ it.Card.CVV }
+							} else {
+								•••
+							}
+						</dd>
+					}
+				case vault.TypeBinary:
+					if it.Binary != nil {
+						<dt>Файл</dt>
+						<dd><a href={ "/vault/" + it.ID + "/file" }>{ it.Binary.Filename }</a></dd>
+					}
+				}
+			</dl>
+			<div class="row" style="margin-top:16px">
+				if !show && it.Type != vault.TypeText && it.Type != vault.TypeBinary {
+					<a class="btn secondary" href={ "/vault/" + it.ID + "?reveal=1" }>Показать секреты</a>
+				}
+				<form method="post" action={ templ.SafeURL("/vault/" + it.ID + "/delete") }>
+					<input type="hidden" name="csrf" value={ p.CSRF }/>
+					<button class="danger" type="submit">Удалить</button>
+				</form>
+			</div>
+		</div>
+	}
+}
+
+func maskCard(n string) string {
+	if len(n) < 4 {
+		return "••••"
+	}
+	return "•••• •••• •••• " + n[len(n)-4:]
+}

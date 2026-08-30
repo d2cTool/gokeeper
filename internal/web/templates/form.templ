@@ -1,0 +1,128 @@
+package templates
+
+import "gokeeper/internal/vault"
+
+templ VaultForm(p Page, it vault.Item, isNew bool, errMsg string) {
+	@Layout(p) {
+		if isNew {
+			<h1>Новая запись</h1>
+		} else {
+			<h1>Редактирование</h1>
+		}
+		if errMsg != "" {
+			<p class="error">{ errMsg }</p>
+		}
+		<div class="panel">
+			if isNew {
+				<form class="stack" method="post" action="/vault" enctype="multipart/form-data">
+					<input type="hidden" name="csrf" value={ p.CSRF }/>
+					@formFields(it, true)
+					<button type="submit">Сохранить</button>
+				</form>
+			} else {
+				<form class="stack" method="post" action={ templ.SafeURL("/vault/" + it.ID) } enctype="multipart/form-data">
+					<input type="hidden" name="csrf" value={ p.CSRF }/>
+					@formFields(it, false)
+					<button type="submit">Сохранить</button>
+				</form>
+			}
+		</div>
+	}
+}
+
+templ formFields(it vault.Item, isNew bool) {
+	if isNew {
+		<label>Тип
+			<select name="type" id="type">
+				<option value="login" selected?={ it.Type == vault.TypeLogin || it.Type == "" }>Логин / пароль</option>
+				<option value="text" selected?={ it.Type == vault.TypeText }>Текст</option>
+				<option value="card" selected?={ it.Type == vault.TypeCard }>Банковская карта</option>
+				<option value="binary" selected?={ it.Type == vault.TypeBinary }>Файл</option>
+			</select>
+		</label>
+	} else {
+		<input type="hidden" name="type" value={ string(it.Type) }/>
+	}
+	<label>Метаданные
+		<input name="metadata" value={ it.Metadata } placeholder="сайт, банк, метки…"/>
+	</label>
+	<label>URL
+		<input name="url" value={ loginField(it, "url") }/>
+	</label>
+	<label>Имя пользователя
+		<input name="username" value={ loginField(it, "user") }/>
+	</label>
+	<label>Пароль
+		<input name="password" type="password" value={ loginField(it, "pass") }/>
+	</label>
+	<label>Заголовок
+		<input name="title" value={ textField(it, "title") }/>
+	</label>
+	<label>Текст
+		<textarea name="body">{ textField(it, "body") }</textarea>
+	</label>
+	<label>Держатель карты
+		<input name="holder" value={ cardField(it, "holder") }/>
+	</label>
+	<label>Номер карты
+		<input name="number" value={ cardField(it, "number") }/>
+	</label>
+	<div class="row">
+		<label>Месяц
+			<input name="exp_month" value={ cardField(it, "month") } placeholder="01"/>
+		</label>
+		<label>Год
+			<input name="exp_year" value={ cardField(it, "year") } placeholder="2028"/>
+		</label>
+		<label>CVV
+			<input name="cvv" value={ cardField(it, "cvv") }/>
+		</label>
+	</div>
+	<label>Файл
+		<input name="file" type="file"/>
+	</label>
+}
+
+func loginField(it vault.Item, which string) string {
+	if it.Login == nil {
+		return ""
+	}
+	switch which {
+	case "url":
+		return it.Login.URL
+	case "user":
+		return it.Login.Username
+	case "pass":
+		return it.Login.Password
+	}
+	return ""
+}
+
+func textField(it vault.Item, which string) string {
+	if it.Text == nil {
+		return ""
+	}
+	if which == "title" {
+		return it.Text.Title
+	}
+	return it.Text.Body
+}
+
+func cardField(it vault.Item, which string) string {
+	if it.Card == nil {
+		return ""
+	}
+	switch which {
+	case "holder":
+		return it.Card.Holder
+	case "number":
+		return it.Card.Number
+	case "month":
+		return it.Card.ExpMonth
+	case "year":
+		return it.Card.ExpYear
+	case "cvv":
+		return it.Card.CVV
+	}
+	return ""
+}
